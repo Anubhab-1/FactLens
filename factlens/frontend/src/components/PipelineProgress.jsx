@@ -1,0 +1,113 @@
+import { Check, LoaderCircle } from "lucide-react";
+
+const STEPS = [
+  "Prepare input",
+  "Extract claims",
+  "Retrieve evidence",
+  "Verify claims",
+  "Report ready",
+];
+
+function getActiveIndex(stage) {
+  if (stage === "scraping" || stage === "detecting" || stage === "media_detecting") {
+    return 0;
+  }
+  if (stage === "extracting") {
+    return 1;
+  }
+  if (stage === "retrieving") {
+    return 2;
+  }
+  if (stage === "verifying") {
+    return 3;
+  }
+  if (stage === "done") {
+    return 4;
+  }
+  return -1;
+}
+
+function getStatusMessage(stage, progress) {
+  if (stage === "extracting") {
+    return "Identifying verifiable claims in the text…";
+  }
+  if (stage === "retrieving") {
+    return `Searching the web… (${progress.done}/${progress.total} claims)`;
+  }
+  if (stage === "verifying") {
+    return `Verifying against evidence… (${progress.done}/${progress.total} claims)`;
+  }
+  if (stage === "detecting") {
+    return "Running AI authorship analysis…";
+  }
+  if (stage === "media_detecting") {
+    return "Analyzing extracted images for deepfake signals…";
+  }
+  if (stage === "scraping") {
+    return "Fetching and cleaning article text…";
+  }
+  if (stage === "done") {
+    return "Report ready.";
+  }
+  return "Waiting to start…";
+}
+
+function PipelineProgress({ stage, progress }) {
+  const activeIndex = getActiveIndex(stage);
+
+  return (
+    <section className="glass-card-static rounded-[2rem] px-6 py-6 animate-fade-in-up gradient-border">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+        {STEPS.map((step, index) => {
+          const isComplete = activeIndex > index || (stage === "done" && index === 4);
+          const isActive = activeIndex === index;
+
+          return (
+            <div key={step} className={`flex items-center gap-3 md:flex-col md:items-start animate-fade-in-up delay-${index + 1}`}>
+              <div
+                className={`flex h-11 w-11 items-center justify-center rounded-full border text-sm font-semibold transition-all duration-500 ${
+                  isComplete
+                    ? "border-emerald-400/30 bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/20 animate-scale-in"
+                    : isActive
+                      ? "border-blue-400/30 bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/30 animate-pulse-glow"
+                      : "border-white/8 bg-slate-900/50 text-slate-500"
+                }`}
+              >
+                {isComplete ? (
+                  <Check className="h-5 w-5" />
+                ) : isActive ? (
+                  <LoaderCircle className="h-5 w-5 animate-spin" />
+                ) : (
+                  <span className="font-mono">{index + 1}</span>
+                )}
+              </div>
+              <div>
+                <p className={`text-sm font-medium transition-colors duration-300 ${isComplete || isActive ? "text-white" : "text-slate-500"}`}>{step}</p>
+                <p className={`text-xs transition-colors duration-300 ${isActive ? "text-blue-300" : "text-slate-500"}`}>
+                  {isComplete ? "Complete" : isActive ? "In progress" : "Pending"}
+                </p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Animated Progress Bar */}
+      <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-slate-800/60">
+        <div
+          className="h-full rounded-full bg-gradient-to-r from-blue-500 via-purple-500 to-emerald-500 transition-all duration-700 ease-out animate-gradient-flow"
+          style={{ width: `${Math.min(((activeIndex + 1) / STEPS.length) * 100, 100)}%` }}
+        />
+      </div>
+
+      <div className="mt-4 glass-pill rounded-2xl px-4 py-3 text-sm text-slate-300">
+        <span className="inline-flex items-center gap-2">
+          {stage !== "done" ? <span className="flex h-2 w-2"><span className="absolute inline-flex h-2 w-2 animate-ping rounded-full bg-blue-400 opacity-75" /><span className="relative inline-flex h-2 w-2 rounded-full bg-blue-500" /></span> : null}
+          {getStatusMessage(stage, progress)}
+        </span>
+      </div>
+    </section>
+  );
+}
+
+export default PipelineProgress;

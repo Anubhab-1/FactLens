@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+openai
+tavily-python
+trafilatura
+python-dotenv
+pydantic
+langchain
+langchain-nvidia-ai-endpoints
+langchain-community
+langchain-core
+html2text
+beautifulsoup4
