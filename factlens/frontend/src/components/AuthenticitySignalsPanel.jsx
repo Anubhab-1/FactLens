@@ -71,27 +71,23 @@ function SignalCard({ title, detection, metaMap, imagePreview = false }) {
       : null;
 
   return (
-    <article className={`rounded-[1.5rem] border p-5 transition-all duration-300 ${meta.tone} ${meta.glow} animate-fade-in-up`}>
-      <div className="flex gap-4">
+    <article className={`rounded-[1.5rem] border p-4 transition-all duration-300 sm:p-5 ${meta.tone} ${meta.glow} animate-fade-in-up`}>
+      <div className="flex gap-3 sm:gap-4">
         {imagePreview && detection?.media_url ? (
-          <div className="scan-overlay h-16 w-24 shrink-0 overflow-hidden rounded-xl border border-white/15 bg-black/30 shadow-lg">
-            <img
-              src={detection.media_url}
-              alt="Analyzed media"
-              className="h-full w-full object-cover"
-            />
+          <div className="scan-overlay h-14 w-20 shrink-0 overflow-hidden rounded-xl border border-white/15 bg-black/30 shadow-lg sm:h-16 sm:w-24">
+            <img src={detection.media_url} alt="Analyzed media" className="h-full w-full object-cover" />
           </div>
         ) : (
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-black/15 ring-1 ring-inset ring-white/8">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-black/15 ring-1 ring-inset ring-white/8 sm:h-11 sm:w-11">
             <Icon className="h-5 w-5" />
           </div>
         )}
 
         <div className="min-w-0 flex-1">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] opacity-75">{title}</p>
-          <p className="mt-2 text-sm font-semibold">{meta.label}</p>
+          <p className="mt-1.5 text-sm font-semibold sm:mt-2">{meta.label}</p>
           <div className="mt-2 flex items-center gap-3">
-            <div className="h-1.5 w-24 overflow-hidden rounded-full bg-black/20">
+            <div className="h-1.5 w-20 overflow-hidden rounded-full bg-black/20 sm:w-24">
               <div
                 className={`h-full rounded-full bg-gradient-to-r ${meta.barColor} transition-all duration-700`}
                 style={{ width: `${probability ?? 0}%` }}
@@ -132,32 +128,21 @@ function AuthenticitySignalsPanel({ aiDetection, mediaDetection }) {
   }
 
   return (
-    <section className="glass-card-static rounded-[1.75rem] p-5 animate-fade-in-up">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Authenticity signals</p>
-          <h3 className="mt-2 text-2xl font-semibold text-white">Context signals, not truth verdicts</h3>
-          <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-400">
-            These checks estimate whether the submitted text or media looks machine-generated. They help frame risk, but they do not determine factual accuracy on their own.
-          </p>
-        </div>
+    <section className="glass-card-static rounded-[1.75rem] p-4 animate-fade-in-up sm:p-5">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Authenticity signals</p>
+        <h3 className="mt-2 text-xl font-semibold text-white sm:text-2xl">Context signals, not truth verdicts</h3>
+        <p className="mt-2 text-sm leading-7 text-slate-400">
+          These checks estimate whether the submitted text or media looks machine-generated. They help frame risk, but they do not determine factual accuracy on their own.
+        </p>
       </div>
 
       <div className="mt-5 grid gap-4 xl:grid-cols-2">
         {aiDetection ? (
-          <SignalCard
-            title="Submitted text"
-            detection={aiDetection}
-            metaMap={AI_META}
-          />
+          <SignalCard title="Submitted text" detection={aiDetection} metaMap={AI_META} />
         ) : null}
         {hasMediaSignal ? (
-          <SignalCard
-            title="Detected article media"
-            detection={mediaDetection}
-            metaMap={MEDIA_META}
-            imagePreview
-          />
+          <SignalCard title="Detected article media" detection={mediaDetection} metaMap={MEDIA_META} imagePreview />
         ) : null}
       </div>
     </section>

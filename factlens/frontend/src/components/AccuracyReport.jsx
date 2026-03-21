@@ -27,7 +27,7 @@ function StatCard({ label, value, helper }) {
   return (
     <div className="glass-card rounded-[1.4rem] px-4 py-4">
       <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">{label}</p>
-      <p className="mt-2 font-mono text-3xl font-semibold text-white">{value}</p>
+      <p className="mt-2 font-mono text-2xl font-semibold text-white sm:text-3xl">{value}</p>
       <p className="mt-2 text-sm text-slate-400">{helper}</p>
     </div>
   );
@@ -45,20 +45,12 @@ function AccuracyReport({ results, claims }) {
       ...accumulator,
       [result.verdict]: (accumulator[result.verdict] || 0) + 1,
     }),
-    {
-      TRUE: 0,
-      FALSE: 0,
-      PARTIALLY_TRUE: 0,
-      UNVERIFIABLE: 0,
-    },
+    { TRUE: 0, FALSE: 0, PARTIALLY_TRUE: 0, UNVERIFIABLE: 0 },
   );
 
   const claimTypeCounts = claims.reduce((accumulator, claim) => {
     const key = claim.claim_type || "entity";
-    return {
-      ...accumulator,
-      [key]: (accumulator[key] || 0) + 1,
-    };
+    return { ...accumulator, [key]: (accumulator[key] || 0) + 1 };
   }, {});
 
   const decisiveCount = counts.TRUE + counts.FALSE;
@@ -72,8 +64,7 @@ function AccuracyReport({ results, claims }) {
     : 0;
   const sourceTotals = results.reduce(
     (totals, result) => ({
-      authoritative:
-        totals.authoritative + (result.retrieval_summary?.authoritative_count || 0),
+      authoritative: totals.authoritative + (result.retrieval_summary?.authoritative_count || 0),
       dated: totals.dated + (result.retrieval_summary?.dated_count || 0),
       sources: totals.sources + (result.retrieval_summary?.source_count || 0),
     }),
@@ -87,37 +78,32 @@ function AccuracyReport({ results, claims }) {
     : 0;
 
   return (
-    <section className="glass-card-static rounded-[2rem] p-6 animate-fade-in-up gradient-border">
-      <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-        <div>
+    <section className="glass-card-static rounded-[2rem] p-4 animate-fade-in-up gradient-border sm:p-6">
+      <div className="flex flex-col gap-5">
+        <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-[0.24em] text-blue-300">Accuracy report</p>
-          <h2 className="mt-2 font-display text-4xl text-white">Evidence-backed claim map</h2>
-          <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-400">
+          <h2 className="mt-2 font-display text-3xl text-white sm:text-4xl">Evidence-backed claim map</h2>
+          <p className="mt-3 text-sm leading-7 text-slate-400">
             {totalClaims} claims extracted, {verifiedCount} verified. Highlights where evidence is strong, where sources disagree, and where claims remain risky.
           </p>
         </div>
 
-        <div className="glass-card rounded-[1.5rem] px-5 py-4">
+        <div className="glass-card w-full rounded-[1.5rem] px-4 py-4 sm:px-5 lg:max-w-sm">
           <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Decisive verdicts</p>
-          <p className="mt-2 font-mono text-4xl font-semibold text-white">{decisiveRate}%</p>
-          <p className="mt-2 text-sm text-slate-400">
-            Claims judged true or false.
-          </p>
+          <p className="mt-2 font-mono text-3xl font-semibold text-white sm:text-4xl">{decisiveRate}%</p>
+          <p className="mt-2 text-sm text-slate-400">Claims judged true or false.</p>
         </div>
       </div>
 
-      <div className="mt-6 flex flex-wrap gap-3">
+      <div className="mt-6 flex flex-wrap gap-2">
         {Object.entries(VERDICT_META).map(([verdict, meta]) => (
-          <span
-            key={verdict}
-            className={`rounded-full px-4 py-2 text-sm font-medium ${meta.badge}`}
-          >
+          <span key={verdict} className={`rounded-full px-3 py-1.5 text-xs font-medium sm:px-4 sm:py-2 sm:text-sm ${meta.badge}`}>
             {meta.label}: {counts[verdict]}
           </span>
         ))}
       </div>
 
-      <div className="mt-6 grid gap-4 lg:grid-cols-4">
+      <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <StatCard label="Time-sensitive" value={timeSensitiveCount} helper="Need recent evidence." />
         <StatCard label="Conflicts" value={conflictCount} helper="Supporting + conflicting evidence." />
         <StatCard label="Avg confidence" value={`${avgConfidence}%`} helper="Across all verified claims." />
@@ -129,7 +115,7 @@ function AccuracyReport({ results, claims }) {
       </div>
 
       <div className="mt-6 glass-card rounded-[1.5rem] p-4">
-        <div className="mb-3 flex items-center justify-between text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
           <span>Verdict distribution</span>
           <span className="font-mono">{verifiedCount} verified</span>
         </div>
@@ -150,16 +136,13 @@ function AccuracyReport({ results, claims }) {
 
       {Object.keys(claimTypeCounts).length ? (
         <div className="mt-6 glass-card rounded-[1.5rem] p-4">
-          <div className="mb-3 flex items-center justify-between text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
             <span>Claim mix</span>
             <span className="font-mono">{totalClaims} extracted</span>
           </div>
           <div className="flex flex-wrap gap-2">
             {Object.entries(claimTypeCounts).map(([claimType, count]) => (
-              <span
-                key={claimType}
-                className="glass-pill rounded-full px-4 py-2 text-sm text-slate-300"
-              >
+              <span key={claimType} className="glass-pill rounded-full px-4 py-2 text-sm text-slate-300">
                 {claimType.replace(/_/g, " ")}: {count}
               </span>
             ))}

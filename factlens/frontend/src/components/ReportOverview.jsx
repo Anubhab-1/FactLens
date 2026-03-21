@@ -16,12 +16,12 @@ const VERDICT_META = {
 
 function SummaryCard({ icon: Icon, label, value, helper, delay = "" }) {
   return (
-    <div className={`glass-card rounded-[1.4rem] px-5 py-5 animate-fade-in-up ${delay}`}>
+    <div className={`glass-card rounded-[1.4rem] px-4 py-4 sm:px-5 sm:py-5 animate-fade-in-up ${delay}`}>
       <div className="flex items-center gap-2 text-slate-400">
-        <Icon className="h-4 w-4" />
+        <Icon className="h-4 w-4 shrink-0" />
         <p className="text-xs font-semibold uppercase tracking-[0.2em]">{label}</p>
       </div>
-      <p className="mt-3 font-mono text-3xl font-semibold text-white">{value}</p>
+      <p className="mt-2 font-mono text-2xl font-semibold text-white sm:mt-3 sm:text-3xl">{value}</p>
       <p className="mt-2 text-sm leading-6 text-slate-400">{helper}</p>
     </div>
   );
@@ -44,21 +44,21 @@ function ReportOverview({ session }) {
   const stats = getSessionStats(session);
 
   return (
-    <section className="glass-card-static rounded-[2rem] p-6 animate-fade-in-up gradient-border">
+    <section className="glass-card-static rounded-[2rem] p-4 animate-fade-in-up gradient-border sm:p-6">
       <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
-        <div>
+        <div className="min-w-0 flex-1">
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-blue-300">Saved report</p>
-          <h1 className="mt-2 max-w-4xl text-3xl font-semibold text-white">
+          <h1 className="mt-2 text-2xl font-semibold text-white sm:text-3xl">
             {getSessionTitle(session)}
           </h1>
-          <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-400">
+          <p className="mt-3 text-sm leading-7 text-slate-400">
             Created {formatSessionDate(session.createdAt)} from {session.inputMode === "url" ? "an article URL" : "pasted text"}. {getNarrative(stats)}
           </p>
         </div>
 
-        <div className="glass-card rounded-[1.5rem] px-5 py-4">
+        <div className="glass-card w-full rounded-[1.5rem] px-4 py-4 sm:px-5 xl:w-auto xl:max-w-md">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Review posture</p>
-          <p className="mt-2 text-2xl font-semibold text-white">
+          <p className="mt-2 text-xl font-semibold text-white sm:text-2xl">
             {stats.conflictCount > 0 ? "Needs careful review" : stats.unresolvedCount > 0 ? "Mostly resolved" : "Clean pass"}
           </p>
           <p className="mt-2 text-sm leading-6 text-slate-400">
@@ -67,18 +67,18 @@ function ReportOverview({ session }) {
         </div>
       </div>
 
-      <div className="mt-6 flex flex-wrap gap-3">
+      <div className="mt-6 flex flex-wrap gap-2 sm:gap-3">
         {Object.entries(stats.counts).map(([verdict, count]) => (
           <span
             key={verdict}
-            className={`rounded-full px-4 py-2 text-sm font-medium ${(VERDICT_META[verdict] || VERDICT_META.UNVERIFIABLE).badge}`}
+            className={`rounded-full px-3 py-1.5 text-xs font-medium sm:px-4 sm:py-2 sm:text-sm ${(VERDICT_META[verdict] || VERDICT_META.UNVERIFIABLE).badge}`}
           >
             {verdict.replace(/_/g, " ")}: {count}
           </span>
         ))}
       </div>
 
-      <div className="mt-6 grid gap-4 lg:grid-cols-4">
+      <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <SummaryCard icon={SearchCheck} label="Verified" value={stats.verifiedCount} helper="Claims with completed verdicts." delay="delay-1" />
         <SummaryCard icon={AlertTriangle} label="Needs review" value={stats.unresolvedCount} helper="Partial or unverifiable claims." delay="delay-2" />
         <SummaryCard icon={Clock3} label="Freshest evidence" value={getFreshestEvidence(session.results)} helper="Newest publication date found." delay="delay-3" />

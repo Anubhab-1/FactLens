@@ -37,9 +37,9 @@ function ClaimNavigator({
   onSelectClaimId,
 }) {
   return (
-    <aside className="glass-card-static rounded-[1.75rem] p-5 animate-slide-in-left">
+    <aside className="glass-card-static rounded-[1.75rem] p-4 animate-slide-in-left sm:p-5">
       <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Claim navigator</p>
-      <h3 className="mt-2 text-xl font-semibold text-white">Review one at a time</h3>
+      <h3 className="mt-2 text-lg font-semibold text-white sm:text-xl">Review one at a time</h3>
       <p className="mt-2 text-sm leading-6 text-slate-400">
         Filter and select a single claim to inspect its verdict, evidence, and risk flags.
       </p>
@@ -50,7 +50,7 @@ function ClaimNavigator({
             key={filter.value}
             type="button"
             onClick={() => onFilterChange(filter.value)}
-            className={`rounded-full px-3 py-2 text-xs font-medium uppercase tracking-[0.16em] transition-all duration-300 ${
+            className={`rounded-full px-3 py-1.5 text-xs font-medium uppercase tracking-[0.16em] transition-all duration-300 ${
               activeFilter === filter.value
                 ? "bg-white text-slate-950 shadow-lg shadow-slate-950/10"
                 : "glass-pill text-slate-300 hover:bg-white/10 hover:text-white"
@@ -68,20 +68,20 @@ function ClaimNavigator({
               key={result.claim_id}
               type="button"
               onClick={() => onSelectClaimId(result.claim_id)}
-              className={`group block w-full rounded-[1.2rem] border px-4 py-3 text-left transition-all duration-300 ${
+              className={`group block w-full rounded-[1.2rem] border px-3 py-3 text-left transition-all duration-300 sm:px-4 ${
                 selectedClaimId === result.claim_id
                   ? "border-blue-400/25 bg-blue-500/10 shadow-lg shadow-blue-950/10 glow-blue"
                   : "border-white/6 bg-white/4 hover:border-white/12 hover:bg-white/8"
               }`}
             >
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <span className={`h-2 w-2 rounded-full ${VERDICT_DOT[result.verdict] || VERDICT_DOT.UNVERIFIABLE}`} />
-                  <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className={`h-2 w-2 shrink-0 rounded-full ${VERDICT_DOT[result.verdict] || VERDICT_DOT.UNVERIFIABLE}`} />
+                  <p className="truncate text-[11px] uppercase tracking-[0.18em] text-slate-400">
                     {result.verdict.replace(/_/g, " ")}
                   </p>
                 </div>
-                <p className="font-mono text-xs font-medium text-slate-400">
+                <p className="shrink-0 font-mono text-xs font-medium text-slate-400">
                   {Math.round((result.confidence || 0) * 100)}%
                 </p>
               </div>

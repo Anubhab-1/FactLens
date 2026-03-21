@@ -20,6 +20,13 @@
   --accent-teal: #2dd4bf;
 }
 
+/* ── Reset ── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 /* ── Base ── */
 html {
   scroll-behavior: smooth;
@@ -32,11 +39,24 @@ body {
   color: var(--ink);
   background: var(--bg-deep);
   overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
 }
 
 #root {
   min-height: 100vh;
   position: relative;
+}
+
+/* Media & embedded content safety */
+img, svg, video, canvas {
+  max-width: 100%;
+  display: block;
+}
+
+/* Global text overflow safety */
+p, h1, h2, h3, h4, h5, h6, blockquote, a, li, span, label {
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 /* ── Aurora Background ── */
@@ -195,6 +215,7 @@ body {
 .glass-card {
   background: var(--bg-glass);
   border: 1px solid var(--border-glass);
+  min-width: 0;
   backdrop-filter: blur(16px) saturate(1.4);
   -webkit-backdrop-filter: blur(16px) saturate(1.4);
   box-shadow:
@@ -213,6 +234,7 @@ body {
 .glass-card-static {
   background: var(--bg-glass);
   border: 1px solid var(--border-glass);
+  min-width: 0;
   backdrop-filter: blur(16px) saturate(1.4);
   -webkit-backdrop-filter: blur(16px) saturate(1.4);
   box-shadow:
@@ -223,6 +245,7 @@ body {
 .glass-pill {
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.08);
+  min-width: 0;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 }
@@ -308,12 +331,6 @@ body {
 /* ── Smooth Transitions on Anchors ── */
 [id^="claim-"] {
   scroll-margin-top: 7rem;
-}
-
-/* ── Smooth Height Transition ── */
-.expand-transition {
-  overflow: hidden;
-  transition: max-height 0.35s ease, opacity 0.25s ease;
 }
 
 /* ── Input Focus Glow ── */
