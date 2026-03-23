@@ -73,11 +73,31 @@ function WorkspacePage({
 
           {/* Error: draft failed */}
           {claimDraft?.status === "error" && (
-            <div className="glass-card-static rounded-2xl border border-rose-500/20 bg-rose-500/8 p-6 space-y-2 animate-fade-in-up">
-              <p className="text-sm font-semibold text-rose-400">Draft Generation Failed</p>
+            <div className="glass-card-static rounded-2xl border border-rose-500/20 bg-rose-500/8 p-6 space-y-3 animate-fade-in-up">
+              <div className="flex items-center gap-2.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-pulse" />
+                <p className="text-sm font-semibold text-rose-400">Draft Generation Failed</p>
+              </div>
               <p className="text-sm leading-relaxed break-words" style={{ color: "var(--ink-2)" }}>
                 {claimDraft.error}
               </p>
+              {inputMode === "url" && inputValue && (
+                <div className="space-y-2 pt-1">
+                  <p className="text-xs" style={{ color: "var(--ink-3)" }}>
+                    The URL may be paywalled, JS-rendered, or blocked. You can paste the article text directly instead.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInputMode("text");
+                      setInputValue("");
+                    }}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-4 py-2 text-xs font-semibold text-white transition-all hover:bg-white/15"
+                  >
+                    Switch to text mode →
+                  </button>
+                </div>
+              )}
             </div>
           )}
 

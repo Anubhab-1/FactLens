@@ -173,9 +173,26 @@ function collectContradictionTypes(result) {
     : [];
 }
 
+function formatDomainLabel(source) {
+  const domain = String(source?.domain || "").trim() || "Web";
+  const year = source?.published_label
+    ? String(source.published_label).match(/\d{4}/)?.[0]
+    : null;
+  return year ? `${domain} · ${year}` : domain;
+}
+
+function authorityTier(score) {
+  if (score >= 8) return { label: "High authority", color: "text-emerald-400" };
+  if (score >= 5) return { label: "Medium authority", color: "text-amber-400" };
+  return { label: "Low authority", color: "text-slate-400" };
+}
+
 function SourceRow({ source }) {
   const stance = formatSourceStance(source?.stance);
   const origin = formatSourceOrigin(source?.source_origin);
+  const domainLabel = formatDomainLabel(source);
+  const authScore = typeof source?.authority_score === "number" ? source.authority_score * 10 : null;
+  const tier = authScore !== null ? authorityTier(authScore) : null;
 
   return (
     <div className="glass-card p-4 space-y-2" style={{ minWidth: 0 }}>
@@ -189,12 +206,15 @@ function SourceRow({ source }) {
           }}
         >
           <Globe className="h-3 w-3 shrink-0" />
-          <span className="truncate max-w-[120px]">{source?.domain || "Web"}</span>
+          <span className="truncate max-w-[180px]">{domainLabel}</span>
         </span>
         {source?.stance ? (
           <span className={`text-[10px] font-bold uppercase tracking-wider ${stance.color}`}>
             {stance.label}
           </span>
+        ) : null}
+        {tier ? (
+          <span className={`text-[10px] font-semibold ${tier.color}`}>{tier.label}</span>
         ) : null}
         {origin ? (
           <span className={`text-[10px] font-bold uppercase tracking-wider ${origin.color}`}>
@@ -204,11 +224,6 @@ function SourceRow({ source }) {
         {Number(source?.independence_group_size || 1) > 1 && Number(source?.independence_weight || 1) < 1 ? (
           <span className="text-[10px] font-bold uppercase tracking-wider text-amber-300">
             Shared network
-          </span>
-        ) : null}
-        {source?.published_label && source.published_label !== "unknown" ? (
-          <span className="font-mono text-[10px]" style={{ color: "var(--ink-3)" }}>
-            {source.published_label}
           </span>
         ) : null}
       </div>
@@ -226,7 +241,7 @@ function SourceRow({ source }) {
 
       <div className="flex items-center justify-between pt-1">
         <span className="font-mono text-[10px]" style={{ color: "var(--ink-3)" }}>
-          Trust {typeof source?.authority_score === "number" ? (source.authority_score * 10).toFixed(1) : "N/A"}
+          Trust {authScore !== null ? authScore.toFixed(1) : "N/A"}
         </span>
         <a
           href={source?.url}
@@ -345,14 +360,44 @@ function ClaimCard({ result, claim, anchorId }) {
           <div className="space-y-5 pt-2 animate-fade-in">
             {result?.reasoning_steps?.length > 0 ? (
               <div className="space-y-3">
-                <span className="label-cap">Chain of Thought</span>
-                <div className="space-y-2">
-                  {result.reasoning_steps.map((step, idx) => (
-                    <div key={idx} className="flex gap-3 text-xs leading-relaxed" style={{ color: "var(--ink-2)" }}>
-                      <span className="shrink-0 font-mono text-[10px] opacity-40">0{idx + 1}</span>
-                      <p>{step}</p>
-                    </div>
-                  ))}
+                <div className="flex items-center gap-2">
+                  <span className="label-cap">Chain of Thought</span>
+                  <span
+                    className="rounded-full px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider"
+                    style={{ background: "rgba(96,165,250,0.12)", color: "var(--blue-400)", border: "1px solid rgba(96,165,250,0.2)" }}
+                  >
+                    {result.reasoning_steps.length} steps
+                  </span>
+                </div>
+                <div className="relative space-y-0 pl-6">
+                  {/* vertical connector line */}
+                  <div
+                    className="absolute left-[9px] top-3 bottom-3 w-px"
+                    style={{ background: "linear-gradient(to bottom, rgba(96,165,250,0.3), rgba(96,165,250,0.05))" }}
+                  />
+                  {result.reasoning_steps.map((step, idx) => {
+                    const isLast = idx === result.reasoning_steps.length - 1;
+                    return (
+                      <div key={idx} className="relative flex gap-3 pb-3">
+                        <span
+                          className="absolute -left-6 flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full font-mono text-[9px] font-bold"
+                          style={{
+                            background: isLast ? "rgba(96,165,250,0.2)" : "var(--bg-hover)",
+                            border: isLast ? "1px solid rgba(96,165,250,0.4)" : "1px solid var(--border-faint)",
+                            color: isLast ? "var(--blue-400)" : "var(--ink-3)",
+                          }}
+                        >
+                          {idx + 1}
+                        </span>
+                        <p
+                          className="text-xs leading-relaxed"
+                          style={{ color: isLast ? "var(--ink-1)" : "var(--ink-2)" }}
+                        >
+                          {step}
+                        </p>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             ) : null}
@@ -369,6 +414,27 @@ function ClaimCard({ result, claim, anchorId }) {
               </div>
             ) : null}
 
+            {/* UNVERIFIABLE explanation */}
+            {verdict === "UNVERIFIABLE" && (
+              <div
+                className="rounded-xl p-4 space-y-2"
+                style={{ background: "rgba(255,255,255,0.03)", border: "1px solid var(--border-subtle)" }}
+              >
+                <p className="text-xs font-bold uppercase tracking-wider" style={{ color: "var(--ink-3)" }}>
+                  Why unverifiable?
+                </p>
+                <p className="text-sm leading-relaxed" style={{ color: "var(--ink-2)" }}>
+                  {result?.reasoning ||
+                    "No sufficiently authoritative or consistent sources were found to confirm or deny this claim. It may be too niche, too recent, or phrased in a way that does not match available evidence."}
+                </p>
+                {sources.length > 0 && (
+                  <p className="text-xs" style={{ color: "var(--ink-3)" }}>
+                    {sources.length} source{sources.length !== 1 ? "s" : ""} retrieved but none provided decisive grounding.
+                  </p>
+                )}
+              </div>
+            )}
+
             {result?.self_reflection ? (
               <div className="rounded-xl border border-white/5 bg-white/3 p-4 space-y-2">
                 <span className="label-cap !text-[9px] opacity-50">Auditor Self-Reflection</span>
@@ -377,6 +443,7 @@ function ClaimCard({ result, claim, anchorId }) {
                 </p>
               </div>
             ) : null}
+
 
             {result?.risk_flags?.some(f => f.includes("Reflection Auditor")) ? (
               <div

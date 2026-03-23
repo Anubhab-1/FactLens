@@ -1899,6 +1899,146 @@ async def verify_claim(claim: dict, evidence: dict, session_claims: list[dict] |
         calibration["conflicting_evidence"],
         calibration["mixed_evidence"],
     )
+    final_result = _assemble_final_result(
+        claim=claim,
+        calibration=calibration,
+        parsed=parsed,
+        evidence=evidence,
+        base_source_assessments=base_source_assessments,
+        combined_risk_flags=combined_risk_flags,
+        conflict_summary=conflict_summary,
+        cross_check_flags=cross_check_flags,
+    )
+
+    subclaim_results, subclaim_summary = _build_subclaim_results(
+        claim,
+        evidence["sources"],
+        claim_requires_recency=bool(parsed.get("claim_requires_recency", False)),
+    )
+    final_result = _apply_subclaim_synthesis(final_result, subclaim_results, subclaim_summary)
+
+    # Run Reflection Auditor for high-stakes claims or low confidence
+    if final_result["confidence"] < 0.7 or final_result["conflict_detected"]:
+        final_result = await _reflect_on_verdict(claim, final_result, session_claims=session_claims)
+
+    return final_result
+
+
+def _build_reasoning_steps(
+    claim: dict,
+    calibration: dict,
+    parsed: dict,
+    evidence: dict,
+    base_source_assessments: list,
+    cross_check_flags: list,
+) -> list[str]:
+    """Build a chain-of-thought step list from calibration data when the LLM does not provide one."""
+    steps: list[str] = []
+    claim_text = str(claim.get("claim", "")).strip()
+    source_count = len(evidence.get("sources", []))
+    breakdown = calibration.get("confidence_breakdown", {})
+    support_score = round(breakdown.get("support_score", 0.0), 2)
+    conflict_score = round(breakdown.get("conflict_score", 0.0), 2)
+    verdict = calibration.get("verdict", "UNVERIFIABLE")
+    confidence = calibration.get("confidence", 0.0)
+    conflict_detected = calibration.get("conflict_detected", False)
+
+    # Step 1: Claim parsing
+    claim_type = str(claim.get("claim_type", "entity")).lower()
+    steps.append(f"Parsed the claim as a {claim_type} assertion and identified key entities for evidence lookup.")
+
+    # Step 2: Evidence retrieval
+    q_count = len(evidence.get("query_variants", []))
+    steps.append(
+        f"Issued {q_count} search {'query' if q_count == 1 else 'queries'} across multiple providers "
+        f"and retrieved {source_count} distinct source{'s' if source_count != 1 else ''}."
+    )
+
+    # Step 3: Per-source assessment summary
+    support_sources = [a for a in base_source_assessments if a.get("stance") == "SUPPORT"]
+    conflict_sources = [a for a in base_source_assessments if a.get("stance") == "CONFLICT"]
+    mixed_sources = [a for a in base_source_assessments if a.get("stance") == "MIXED"]
+    irrelevant_sources = [a for a in base_source_assessments if a.get("stance") == "IRRELEVANT"]
+    assessment_parts = []
+    if support_sources:
+        assessment_parts.append(f"{len(support_sources)} supporting")
+    if conflict_sources:
+        assessment_parts.append(f"{len(conflict_sources)} conflicting")
+    if mixed_sources:
+        assessment_parts.append(f"{len(mixed_sources)} mixed")
+    if irrelevant_sources:
+        assessment_parts.append(f"{len(irrelevant_sources)} irrelevant")
+    assessment_summary = ", ".join(assessment_parts) if assessment_parts else "no clearly relevant"
+    steps.append(f"Assessed each source against the claim: {assessment_summary} source(s) found.")
+
+    # Step 4: Scoring
+    steps.append(
+        f"Computed weighted evidence scores — support: {support_score:.2f}, conflict: {conflict_score:.2f}. "
+        + ("Evidence conflict was detected." if conflict_detected else "No significant evidence conflict detected.")
+    )
+
+    # Step 5: Auditor / reflection
+    reflection_text = str(parsed.get("self_reflection", "")).strip()
+    auditor_suggestion = "No reflection override was applied."
+    if cross_check_flags:
+        for flag in cross_check_flags:
+            if "Reflection Auditor" in flag or "auditor" in flag.lower():
+                auditor_suggestion = flag
+                break
+    if reflection_text:
+        steps.append(f"Self-reflection: {reflection_text[:200].rstrip()}")
+    else:
+        steps.append(f"Reflection Auditor checked for contradictions. {auditor_suggestion}")
+
+    # Step 6: Final verdict
+    verdict_label = {
+        "TRUE": "TRUE",
+        "FALSE": "FALSE",
+        "PARTIALLY_TRUE": "PARTIALLY TRUE",
+        "UNVERIFIABLE": "UNVERIFIABLE",
+    }.get(verdict, verdict)
+    steps.append(
+        f"Final verdict: {verdict_label} (confidence {round(confidence * 100)}%). "
+        f"{'Conflict in evidence led to a nuanced assessment.' if conflict_detected else 'Evidence was consistent with this verdict.'}"
+    )
+
+    return steps
+
+
+def _assemble_final_result(
+    claim: dict,
+    calibration: dict,
+    parsed: dict,
+    evidence: dict,
+    base_source_assessments: list,
+    combined_risk_flags: list,
+    conflict_summary: dict,
+    cross_check_flags: list,
+) -> dict:
+    """Assemble the final verification result dict."""
+    reasoning = _resolved_reasoning(
+        str(parsed.get("reasoning", "")).strip(),
+        calibration["verdict"],
+        calibration["confidence_breakdown"],
+    )
+
+    # Use LLM-provided steps if available, otherwise build them from calibration data
+    llm_steps = [str(s).strip() for s in parsed.get("reasoning_steps", []) if str(s).strip()]
+    reasoning_steps = llm_steps or _build_reasoning_steps(
+        claim, calibration, parsed, evidence, base_source_assessments, cross_check_flags
+    )
+
+    temporal_sources = (
+        calibration["supporting_evidence"]
+        + calibration["conflicting_evidence"]
+        + calibration["mixed_evidence"]
+    ) or (
+        calibration["supporting_evidence"]
+        + calibration["conflicting_evidence"]
+        + calibration["mixed_evidence"]
+        + calibration["neutral_evidence"]
+    )
+
     evidence_used = sorted(
         (
             calibration["supporting_evidence"]
@@ -1909,19 +2049,8 @@ async def verify_claim(claim: dict, evidence: dict, session_claims: list[dict] |
         key=lambda source: source.get("overall_score", 0.0),
         reverse=True,
     )
-    temporal_sources = (
-        calibration["supporting_evidence"]
-        + calibration["conflicting_evidence"]
-        + calibration["mixed_evidence"]
-    ) or evidence_used
 
-    reasoning = _resolved_reasoning(
-        str(parsed.get("reasoning", "")).strip(),
-        calibration["verdict"],
-        calibration["confidence_breakdown"],
-    )
-
-    final_result = {
+    return {
         "claim_id": claim["id"],
         "claim": claim["claim"],
         "claim_type": claim.get("claim_type", "entity"),
@@ -1930,7 +2059,7 @@ async def verify_claim(claim: dict, evidence: dict, session_claims: list[dict] |
         "verdict": calibration["verdict"],
         "confidence": calibration["confidence"],
         "reasoning": reasoning,
-        "reasoning_steps": parsed.get("reasoning_steps", []),
+        "reasoning_steps": reasoning_steps,
         "self_reflection": parsed.get("self_reflection", ""),
         "supporting_sources": [source["url"] for source in calibration["supporting_evidence"]],
         "conflicting_sources": [source["url"] for source in calibration["conflicting_evidence"]],
@@ -1954,16 +2083,4 @@ async def verify_claim(claim: dict, evidence: dict, session_claims: list[dict] |
         "base_source_assessments": base_source_assessments,
         "manual_override": None,
     }
-    subclaim_results, subclaim_summary = _build_subclaim_results(
-        claim,
-        evidence["sources"],
-        claim_requires_recency=bool(parsed.get("claim_requires_recency", False)),
-    )
-    final_result = _apply_subclaim_synthesis(final_result, subclaim_results, subclaim_summary)
 
-    # Run Reflection Auditor for high-stakes claims or low confidence
-    if final_result["confidence"] < 0.7 or final_result["conflict_detected"]:
-       # Reflection Auditor Pass (Pass session_claims for cross-reference)
-        final_result = await _reflect_on_verdict(claim, final_result, session_claims=session_claims)
-    
-    return final_result

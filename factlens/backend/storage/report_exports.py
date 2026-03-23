@@ -144,6 +144,12 @@ def _build_report_lines(report: dict) -> list[str]:
 
         _add_wrapped_line(lines, "Reasoning: ", result.get("reasoning") or "No reasoning returned.")
 
+        reasoning_steps = result.get("reasoning_steps") or []
+        if reasoning_steps:
+            lines.append("Execution steps (Chain of Thought):")
+            for step_idx, step in enumerate(reasoning_steps, start=1):
+                _add_wrapped_line(lines, f"  {step_idx}. ", str(step))
+
         risk_flags = result.get("risk_flags") or []
         if risk_flags:
             _add_wrapped_line(lines, "Risk flags: ", "; ".join(str(flag) for flag in risk_flags))
@@ -186,7 +192,7 @@ def _build_report_lines(report: dict) -> list[str]:
                 "Subclaim synthesis: ",
                 str(subclaim_summary.get("synthesis_note") or f"{len(subclaim_results)} subclaims reviewed."),
             )
-            for subclaim_index, subclaim in enumerate(subclaim_results[:3], start=1):
+            for subclaim_index, subclaim in enumerate(subclaim_results[:10], start=1):
                 verdict = VERDICT_LABELS.get(subclaim.get("verdict"), _title_case(subclaim.get("verdict", "unknown")))
                 confidence_label = round(float(subclaim.get("confidence", 0.0) or 0.0) * 100)
                 _add_wrapped_line(
@@ -195,7 +201,7 @@ def _build_report_lines(report: dict) -> list[str]:
                     f"{verdict} ({confidence_label}% confidence) | {subclaim.get('claim') or 'No subclaim text available.'}",
                 )
 
-        top_sources = (result.get("evidence_used") or [])[:2]
+        top_sources = (result.get("evidence_used") or [])[:5]
         if top_sources:
             for source_index, source in enumerate(top_sources, start=1):
                 source_parts = [
@@ -209,7 +215,7 @@ def _build_report_lines(report: dict) -> list[str]:
                     _add_wrapped_line(lines, "Source URL: ", str(source["url"]))
 
         evidence_provenance = result.get("evidence_provenance") or []
-        for proof_index, proof in enumerate(evidence_provenance[:2], start=1):
+        for proof_index, proof in enumerate(evidence_provenance[:5], start=1):
             snapshot_bits = [str(proof.get("snapshot_id") or "snapshot unavailable")]
             if proof.get("captured_at"):
                 snapshot_bits.append(str(proof["captured_at"]))
