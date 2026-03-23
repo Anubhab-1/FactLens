@@ -1,4 +1,4 @@
-import { Archive, ArrowUpRight, Clock3, Pin, RotateCcw, Trash2 } from "lucide-react";
+import { ArrowUpRight, RotateCcw, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import {
@@ -9,11 +9,49 @@ import {
   getSessionTitle,
 } from "../lib/sessions";
 
-const STATUS_META = {
-  done: "bg-emerald-500/12 text-emerald-200 ring-1 ring-inset ring-emerald-400/20",
-  running: "bg-blue-500/12 text-blue-200 ring-1 ring-inset ring-blue-400/20 animate-pulse-glow",
-  error: "bg-rose-500/12 text-rose-200 ring-1 ring-inset ring-rose-400/20",
+const STATUS = {
+  done: { dot: "bg-emerald-400", text: "text-emerald-400", label: "Done" },
+  running: { dot: "bg-blue-400 animate-pulse", text: "text-blue-400", label: "Running" },
+  error: { dot: "bg-rose-400", text: "text-rose-400", label: "Failed" },
+  needs_review: { dot: "bg-amber-400", text: "text-amber-400", label: "Review" },
 };
+
+function ActionButton({ children, onClick, disabled = false, tone = "default" }) {
+  const toneClassName = tone === "danger"
+    ? "border-rose-500/20 text-rose-300 hover:bg-rose-500/10 hover:text-rose-200"
+    : "border-white/8 text-slate-300 hover:bg-white/8 hover:text-white";
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-50 ${toneClassName}`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function IconButton({ label, onClick, disabled = false, children, tone = "default" }) {
+  const toneClassName = tone === "danger"
+    ? "hover:bg-rose-500/10 hover:text-rose-400"
+    : "hover:bg-white/8";
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={label}
+      aria-label={label}
+      disabled={disabled}
+      className={`rounded-lg p-1.5 transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${toneClassName}`}
+      style={{ color: "var(--ink-3)" }}
+    >
+      {children}
+    </button>
+  );
+}
 
 function SessionCard({
   session,
@@ -21,100 +59,103 @@ function SessionCard({
   onTogglePinned,
   onToggleArchived,
   onDelete,
+  compact = false,
   isActionBusy = false,
 }) {
+  const meta = STATUS[session.status] || STATUS.done;
   const stats = getSessionStats(session);
   const freshestEvidence = getFreshestEvidence(session.results);
+  const routeId = getReportRouteId(session);
 
   return (
-    <article className="glass-card rounded-[1.5rem] p-4 animate-fade-in-up sm:p-5">
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className={`rounded-full px-3 py-1 text-xs font-medium uppercase tracking-[0.16em] ${STATUS_META[session.status] || STATUS_META.done}`}>
-            {session.status}
+    <article className="glass-card group p-4 space-y-3 animate-fade-in-up" style={{ minWidth: 0 }}>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5">
+          <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${meta.dot}`} />
+          <span className={`text-[10px] font-bold uppercase tracking-widest ${meta.text}`}>
+            {meta.label}
           </span>
-          <span className="glass-pill rounded-full px-3 py-1 text-xs uppercase tracking-[0.16em] text-slate-400">
-            {session.inputMode === "url" ? "Article URL" : "Pasted text"}
-          </span>
-          {session.isPinned ? (
-            <span className="rounded-full bg-amber-500/12 px-3 py-1 text-xs uppercase tracking-[0.16em] text-amber-200 ring-1 ring-inset ring-amber-400/20">
-              Pinned
-            </span>
-          ) : null}
         </div>
+        <span className="font-mono text-[10px] shrink-0" style={{ color: "var(--ink-3)" }}>
+          {formatSessionDate(session.createdAt)}
+        </span>
+      </div>
 
-        <div className="min-w-0">
-          <h3 className="text-base font-semibold text-white sm:text-lg">{getSessionTitle(session)}</h3>
-          <p className="mt-2 flex items-center gap-2 text-sm text-slate-400">
-            <Clock3 className="h-4 w-4 shrink-0" />
-            {formatSessionDate(session.createdAt)}
+      <div className="min-w-0">
+        <Link
+          to={`/report/${routeId}`}
+          className="block truncate text-sm font-semibold text-white transition-colors group-hover:text-blue-300"
+        >
+          {getSessionTitle(session)}
+        </Link>
+        {!compact ? (
+          <p className="mt-0.5 font-mono text-[10px] truncate" style={{ color: "var(--ink-3)" }}>
+            {stats.totalClaims} claims - {stats.verifiedCount} verified
+            {freshestEvidence && freshestEvidence !== "unknown" ? ` - ${freshestEvidence}` : ""}
           </p>
-        </div>
+        ) : null}
+      </div>
 
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
-          {[
-            { label: "Claims", value: stats.totalClaims },
-            { label: "Verified", value: stats.verifiedCount },
-            { label: "Conflicts", value: stats.conflictCount },
-            { label: "Freshest", value: freshestEvidence },
-          ].map((stat) => (
-            <div key={stat.label} className="min-w-0 rounded-2xl border border-white/6 bg-white/4 px-3 py-2.5 sm:py-3">
-              <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 sm:text-[11px]">{stat.label}</p>
-              <p className="mt-1.5 font-mono text-base font-semibold text-white sm:mt-2 sm:text-lg">{stat.value}</p>
-            </div>
-          ))}
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          <Link
-            to={`/report/${getReportRouteId(session)}`}
-            className="btn-shimmer inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-blue-500 to-blue-400 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition-all duration-300 hover:shadow-xl hover:scale-[1.03]"
-          >
-            <ArrowUpRight className="h-4 w-4 shrink-0" />
-            Open report
-          </Link>
-          <button
-            type="button"
-            onClick={() => onReuseSession(session)}
-            className="glass-pill inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium text-slate-200 transition-all duration-300 hover:bg-white/10 hover:text-white"
-          >
-            <RotateCcw className="h-4 w-4 shrink-0" />
-            Reuse
-          </button>
-          {onTogglePinned ? (
-            <button
-              type="button"
-              onClick={() => onTogglePinned(session)}
-              disabled={isActionBusy}
-              className="glass-pill inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium text-slate-200 transition-all duration-300 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <Pin className="h-4 w-4 shrink-0" />
-              {session.isPinned ? "Unpin" : "Pin"}
-            </button>
+      <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+        <div className="flex flex-wrap items-center gap-2">
+          {onReuseSession ? (
+            compact ? (
+              <IconButton
+                label="Re-run with same input"
+                onClick={() => onReuseSession(session)}
+                disabled={isActionBusy}
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+              </IconButton>
+            ) : (
+              <ActionButton onClick={() => onReuseSession(session)} disabled={isActionBusy}>
+                Re-run
+              </ActionButton>
+            )
           ) : null}
-          {onToggleArchived ? (
-            <button
-              type="button"
-              onClick={() => onToggleArchived(session)}
-              disabled={isActionBusy}
-              className="glass-pill inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium text-slate-200 transition-all duration-300 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <Archive className="h-4 w-4 shrink-0" />
+
+          {!compact && onTogglePinned ? (
+            <ActionButton onClick={() => onTogglePinned(session)} disabled={isActionBusy}>
+              {session.isPinned ? "Pinned" : "Pin"}
+            </ActionButton>
+          ) : null}
+
+          {!compact && onToggleArchived ? (
+            <ActionButton onClick={() => onToggleArchived(session)} disabled={isActionBusy}>
               {session.isArchived ? "Restore" : "Archive"}
-            </button>
+            </ActionButton>
           ) : null}
+
           {onDelete ? (
-            <button
-              type="button"
-              onClick={() => onDelete(session)}
-              disabled={isActionBusy}
-              className="inline-flex items-center gap-2 rounded-full border border-rose-400/15 bg-rose-500/8 px-4 py-2 text-sm font-medium text-rose-200 transition-all duration-300 hover:bg-rose-500/15 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <Trash2 className="h-4 w-4 shrink-0" />
-              Delete
-            </button>
+            compact ? (
+              <IconButton
+                label="Delete"
+                onClick={() => onDelete(session)}
+                disabled={isActionBusy}
+                tone="danger"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </IconButton>
+            ) : (
+              <ActionButton
+                onClick={() => onDelete(session)}
+                disabled={isActionBusy}
+                tone="danger"
+              >
+                Delete
+              </ActionButton>
+            )
           ) : null}
         </div>
+
+        <Link
+          to={`/report/${routeId}`}
+          className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider transition-colors"
+          style={{ color: "var(--ink-3)" }}
+        >
+          View
+          <ArrowUpRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+        </Link>
       </div>
     </article>
   );

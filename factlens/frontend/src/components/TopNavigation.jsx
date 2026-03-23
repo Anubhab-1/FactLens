@@ -1,67 +1,122 @@
-import { History, Search, Zap } from "lucide-react";
+import { useState } from "react";
+import { Menu, X, Search, Zap, History, BarChart2 } from "lucide-react";
 import { Link, NavLink } from "react-router-dom";
 
-function navLinkClass({ isActive }) {
-  return `relative rounded-full px-4 py-2 text-sm font-medium transition-all duration-300 ${
-    isActive
-      ? "bg-white/12 text-white shadow-lg shadow-blue-950/20 backdrop-blur-sm"
-      : "text-slate-400 hover:bg-white/6 hover:text-white"
-  }`;
-}
+const NAV_LINKS = [
+  { to: "/", label: "Home",        end: true  },
+  { to: "/workspace", label: "Workspace" },
+  { to: "/history",   label: "History"   },
+  { to: "/demo",      label: "Demo"      },
+  { to: "/methodology", label: "About"  },
+];
 
 function TopNavigation({ sessionCount }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+
   return (
-    <header className="glass-card-static sticky top-4 z-20 rounded-[1.75rem] px-4 py-3 sm:px-5 animate-fade-in-up gradient-border">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex min-w-0 items-center gap-3">
-          <Link
-            to="/"
-            className="group flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 text-blue-300 ring-1 ring-inset ring-blue-400/20 transition-all duration-300 hover:scale-110 hover:shadow-lg hover:shadow-blue-500/20"
+    <header className="nav-frosted w-full animate-fade-in">
+      <div
+        style={{ maxWidth: "1280px", marginInline: "auto", height: "100%" }}
+        className="flex items-center justify-between gap-4 px-4 sm:px-6 lg:px-8"
+      >
+        {/* Brand */}
+        <Link
+          to="/"
+          className="flex shrink-0 items-center gap-2.5 transition-opacity hover:opacity-80"
+          onClick={() => setMenuOpen(false)}
+        >
+          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-500/15 ring-1 ring-blue-500/30">
+            <Search className="h-4 w-4 text-blue-400" />
+          </span>
+          <span
+            style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.02em" }}
+            className="text-xl font-bold text-white"
           >
-            <Search className="h-5 w-5 transition-transform duration-300 group-hover:rotate-12" />
+            FactLens
+          </span>
+        </Link>
+
+        {/* Desktop Nav */}
+        <nav className="hidden items-center gap-1 md:flex">
+          {NAV_LINKS.map(({ to, label, end }) => (
+            <NavLink
+              key={to}
+              to={to}
+              end={end}
+              className={({ isActive }) =>
+                `rounded-full px-4 py-1.5 text-sm font-medium transition-all duration-200 ${
+                  isActive
+                    ? "bg-white/8 text-white"
+                    : "text-white/40 hover:bg-white/5 hover:text-white/80"
+                }`
+              }
+            >
+              {label}
+            </NavLink>
+          ))}
+        </nav>
+
+        {/* Right actions */}
+        <div className="flex shrink-0 items-center gap-2.5">
+          {/* Session count badge */}
+          <span className="glass-pill hidden sm:flex">
+            <BarChart2 className="h-3 w-3" />
+            {sessionCount} run{sessionCount !== 1 ? "s" : ""}
+          </span>
+
+          {/* CTA */}
+          <Link
+            to="/workspace"
+            className="btn-primary btn-shimmer text-xs tracking-wide"
+          >
+            <Zap className="h-3.5 w-3.5 shrink-0 fill-current" />
+            Verify
           </Link>
 
-          <div className="min-w-0">
-            <Link to="/" className="font-display text-2xl leading-none text-white hover:text-gradient transition-all duration-300 sm:text-3xl">
-              FactLens
-            </Link>
-            <p className="mt-1 hidden text-sm text-slate-400 sm:block">
-              AI-powered claim verification engine
-            </p>
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <nav className="flex flex-wrap gap-1.5">
-            <NavLink to="/" end className={navLinkClass}>
-              Home
-            </NavLink>
-            <NavLink to="/workspace" className={navLinkClass}>
-              Workspace
-            </NavLink>
-            <NavLink to="/history" className={navLinkClass}>
-              History
-            </NavLink>
-            <NavLink to="/methodology" className={navLinkClass}>
-              Methodology
-            </NavLink>
-          </nav>
-
-          <div className="flex items-center gap-2">
-            <div className="glass-pill flex items-center gap-2 rounded-full px-3 py-2 text-xs uppercase tracking-[0.18em] text-slate-400">
-              <History className="h-3.5 w-3.5 shrink-0" />
-              {sessionCount} run{sessionCount === 1 ? "" : "s"}
-            </div>
-            <Link
-              to="/workspace"
-              className="btn-shimmer inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-blue-500 to-blue-400 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-blue-600/25 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/30 hover:scale-[1.03]"
-            >
-              <Zap className="h-4 w-4 shrink-0" />
-              Analyze
-            </Link>
-          </div>
+          {/* Mobile hamburger */}
+          <button
+            type="button"
+            aria-label="Toggle menu"
+            onClick={() => setMenuOpen((p) => !p)}
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/8 text-white/50 transition-colors hover:text-white md:hidden"
+          >
+            {menuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+          </button>
         </div>
       </div>
+
+      {/* Mobile Dropdown */}
+      {menuOpen && (
+        <div
+          className="absolute left-0 right-0 top-[72px] z-40 animate-fade-in border-t border-b border-white/5 bg-[#07070c]/95 backdrop-blur-2xl md:hidden"
+        >
+          <nav className="flex flex-col px-4 py-4 gap-1">
+            {NAV_LINKS.map(({ to, label, end }) => (
+              <NavLink
+                key={to}
+                to={to}
+                end={end}
+                onClick={() => setMenuOpen(false)}
+                className={({ isActive }) =>
+                  `rounded-xl px-4 py-3 text-sm font-medium transition-colors ${
+                    isActive
+                      ? "bg-white/8 text-white"
+                      : "text-white/40 hover:bg-white/5 hover:text-white"
+                  }`
+                }
+              >
+                {label}
+              </NavLink>
+            ))}
+            <div className="mt-3 flex items-center justify-between border-t border-white/5 pt-3">
+              <span className="glass-pill">
+                <History className="h-3 w-3" />
+                {sessionCount} run{sessionCount !== 1 ? "s" : ""}
+              </span>
+            </div>
+          </nav>
+        </div>
+      )}
     </header>
   );
 }

@@ -3,11 +3,16 @@ uvicorn[standard]
 openai
 tavily-python
 trafilatura
+selenium
 python-dotenv
 pydantic
 langchain
 langchain-nvidia-ai-endpoints
+langchain-google-genai
+langchain-openai
 langchain-community
 langchain-core
 html2text
 beautifulsoup4
+sqlalchemy
+psycopg2-binary

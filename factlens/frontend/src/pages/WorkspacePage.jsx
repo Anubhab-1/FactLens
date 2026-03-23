@@ -1,232 +1,260 @@
-import { ArrowRight, BookOpenText, Clock3, Sparkles, Zap } from "lucide-react";
+import { useState } from "react";
+import { ArrowRight, BookOpenText, ChevronRight, Search } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import AccuracyReport from "../components/AccuracyReport";
 import AuthenticitySignalsPanel from "../components/AuthenticitySignalsPanel";
+import ClaimExtractionPanel from "../components/ClaimExtractionPanel";
+import ClaimReviewPanel from "../components/ClaimReviewPanel";
+import ClaimTracePanel from "../components/ClaimTracePanel";
 import InputPanel from "../components/InputPanel";
 import PipelineProgress from "../components/PipelineProgress";
 import SessionCard from "../components/SessionCard";
+import SourceCapturePanel from "../components/SourceCapturePanel";
 import { sampleInputs } from "../data/sampleInputs";
 import { getReportRouteId } from "../lib/sessions";
 
+const SAMPLE_INPUTS = sampleInputs;
+
 function WorkspacePage({
-  inputMode,
-  setInputMode,
-  inputValue,
-  setInputValue,
-  onSubmit,
-  activeSession,
-  sessions,
-  onUseSample,
-  onReuseSession,
+  inputMode, setInputMode,
+  inputValue, setInputValue,
+  onSubmit, onReviewClaims,
+  activeSession, claimDraft,
+  isPreparingDraft, isSubmittingReviewedClaims,
+  onUpdateDraftClaim, onAddDraftClaim, onRemoveDraftClaim,
+  onDiscardDraft, onVerifyReviewedClaims,
+  sessions, onUseSample, onReuseSession,
 }) {
-  const isLoading = activeSession?.status === "running";
-  const recentSessions = sessions.slice(0, 3);
-  const hasResults = activeSession?.results.length > 0;
+  const [selectedClaimId, setSelectedClaimId] = useState(null);
+
+  const isLoading = activeSession?.status === "running" || activeSession?.status === "processing";
+  const hasResults  = (activeSession?.results?.length ?? 0) > 0;
+  const hasReviewDraft = claimDraft?.status === "ready";
+  const previewState   = hasReviewDraft ? claimDraft : activeSession;
+  const recentSessions = sessions.slice(0, 4);
+
+  const handleApplySample = (sample) => {
+    setInputMode(sample.mode ?? "text");
+    setInputValue(sample.value ?? "");
+  };
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_330px]">
-      <div className="space-y-6">
-        <section className="glass-card-static rounded-[1.75rem] px-6 py-5 animate-fade-in-up">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-blue-300">Workspace</p>
-          <div className="mt-3 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <h1 className="text-3xl font-semibold text-white">Run a new verification pass</h1>
-              <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-400">
-                Start with pasted text or a URL. Completed runs are saved so reports can be reopened and shared.
+    <div className="page-wrapper animate-fade-in">
+      {/* ── Page header ────────────────────────────────────────── */}
+      <header className="mb-10 space-y-3">
+        <span className="label-cap">Workspace</span>
+        <h1 className="text-4xl font-extrabold text-white sm:text-5xl" style={{ letterSpacing: "-0.03em" }}>
+          Fact-check anything.
+        </h1>
+        <p className="max-w-xl text-base leading-relaxed" style={{ color: "var(--ink-2)" }}>
+          Paste text, a URL, or a YouTube link. FactLens will extract atomic claims and verify them
+          against cross-referenced primary sources.
+        </p>
+      </header>
+
+      {/* ── Two-column layout ─────────────────────────────────── */}
+      <div className="grid gap-10 lg:grid-cols-[1fr_340px]">
+
+        {/* ── Main Column ──────────────────────────────────────── */}
+        <div className="min-w-0 space-y-8">
+
+          {/* Input Hub */}
+          <InputPanel
+            inputMode={inputMode}
+            inputValue={inputValue}
+            setInputMode={setInputMode}
+            setInputValue={setInputValue}
+            onSubmit={onSubmit}
+            onReviewClaims={onReviewClaims}
+            isLoading={isLoading}
+            isReviewLoading={isPreparingDraft}
+          />
+
+          {/* Error: draft failed */}
+          {claimDraft?.status === "error" && (
+            <div className="glass-card-static rounded-2xl border border-rose-500/20 bg-rose-500/8 p-6 space-y-2 animate-fade-in-up">
+              <p className="text-sm font-semibold text-rose-400">Draft Generation Failed</p>
+              <p className="text-sm leading-relaxed break-words" style={{ color: "var(--ink-2)" }}>
+                {claimDraft.error}
               </p>
-            </div>
-            <Link
-              to="/methodology"
-              className="glass-pill inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium text-slate-300 transition-all duration-300 hover:bg-white/10 hover:text-white"
-            >
-              <BookOpenText className="h-4 w-4" />
-              How scoring works
-            </Link>
-          </div>
-        </section>
-
-        <InputPanel
-          inputMode={inputMode}
-          setInputMode={setInputMode}
-          inputValue={inputValue}
-          setInputValue={setInputValue}
-          onSubmit={onSubmit}
-          isLoading={isLoading}
-        />
-
-        <AuthenticitySignalsPanel
-          aiDetection={activeSession?.aiDetection}
-          mediaDetection={activeSession?.mediaDetection}
-        />
-
-        {activeSession?.error ? (
-          <section className="rounded-[1.75rem] border border-rose-400/20 bg-rose-500/8 px-5 py-5 text-rose-200 glow-rose animate-fade-in-up">
-            <h2 className="text-xl font-semibold text-white">The latest run stopped before completion.</h2>
-            <p className="mt-3 text-sm leading-7">{activeSession.error}</p>
-            <div className="mt-5 flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={onSubmit}
-                className="btn-shimmer rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-950 transition-all duration-300 hover:bg-rose-100"
-              >
-                Retry current input
-              </button>
-              <button
-                type="button"
-                onClick={() => onUseSample(sampleInputs[1])}
-                className="glass-pill rounded-full px-4 py-2 text-sm font-medium text-white transition-all duration-300 hover:bg-white/10"
-              >
-                Load clean sample
-              </button>
-            </div>
-          </section>
-        ) : null}
-
-        {isLoading ? (
-          <PipelineProgress stage={activeSession.pipelineStage} progress={activeSession.progress} />
-        ) : null}
-
-        {!activeSession ? (
-          <section className="glass-card rounded-[1.75rem] border-dashed px-5 py-5 text-sm leading-7 text-slate-400 animate-fade-in-up">
-            Start with a sample or paste a passage. The first successful run will be saved automatically and opened as a report.
-          </section>
-        ) : null}
-
-        {activeSession?.status === "done" ? (
-          <div className="rounded-[1.75rem] border border-emerald-400/20 bg-emerald-500/8 px-5 py-4 text-sm text-emerald-200 glow-emerald animate-fade-in-up">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <p>The report is ready and saved.</p>
-              <Link
-                to={`/report/${getReportRouteId(activeSession)}`}
-                className="btn-shimmer inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 font-semibold text-slate-950 transition-all duration-300 hover:bg-emerald-100"
-              >
-                Open saved report
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </div>
-          </div>
-        ) : null}
-
-        {!isLoading && !activeSession?.error && activeSession?.pipelineStage === "done" && activeSession.claims.length === 0 ? (
-          <section className="rounded-[1.75rem] border border-amber-400/20 bg-amber-500/8 px-5 py-5 text-amber-200 glow-amber animate-fade-in-up">
-            <h2 className="text-xl font-semibold text-white">No verifiable claims were extracted.</h2>
-            <p className="mt-3 text-sm leading-7">
-              The input may have been too narrative, too sparse, or too outline-like for the extractor to produce atomic facts.
-            </p>
-            <div className="mt-5 flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={() => onUseSample(sampleInputs[1])}
-                className="btn-shimmer rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-950 transition-all duration-300 hover:bg-amber-100"
-              >
-                Load clean sample
-              </button>
-            </div>
-          </section>
-        ) : null}
-
-        {!isLoading &&
-        !activeSession?.error &&
-        activeSession?.pipelineStage === "done" &&
-        activeSession.claims.length > 0 &&
-        activeSession.results.length === 0 ? (
-          <section className="rounded-[1.75rem] border border-amber-400/20 bg-amber-500/8 px-5 py-5 text-sm text-amber-200 glow-amber animate-fade-in-up">
-            <h2 className="text-xl font-semibold text-white">Claims were extracted, but the report did not fully resolve.</h2>
-            <p className="mt-3 leading-7">
-              This usually means upstream model or retrieval failures interrupted verification after extraction.
-            </p>
-            <div className="mt-5 flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={onSubmit}
-                className="btn-shimmer rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-950 transition-all duration-300 hover:bg-amber-100"
-              >
-                Retry current input
-              </button>
-            </div>
-          </section>
-        ) : null}
-
-        {hasResults ? (
-          <section className="space-y-4 animate-fade-in-up">
-            <div className="glass-card-static rounded-[1.75rem] px-5 py-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Workspace preview</p>
-              <h2 className="mt-2 text-2xl font-semibold text-white">Claim map preview</h2>
-              <p className="mt-2 text-sm leading-7 text-slate-400">
-                Quick preview while you work. The dedicated report page gives a cleaner single-claim review flow.
-              </p>
-              <div className="mt-5">
-                <Link
-                  to={`/report/${getReportRouteId(activeSession)}`}
-                  className="btn-shimmer inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-blue-500 to-blue-400 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition-all duration-300 hover:scale-[1.03]"
-                >
-                  Open full report
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </div>
-            </div>
-            <AccuracyReport results={activeSession.results} claims={activeSession.claims} />
-          </section>
-        ) : null}
-      </div>
-
-      <div className="space-y-6">
-        <section className="glass-card-static rounded-[1.75rem] p-5 animate-fade-in-up delay-2">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Starter kits</p>
-          <div className="mt-4 space-y-3">
-            {sampleInputs.map((sample, index) => (
-              <button
-                key={sample.id}
-                type="button"
-                onClick={() => onUseSample(sample)}
-                disabled={isLoading}
-                className={`group w-full rounded-[1.25rem] border border-white/6 bg-white/4 px-4 py-4 text-left transition-all duration-300 hover:border-blue-400/20 hover:bg-white/8 disabled:cursor-not-allowed disabled:opacity-50 animate-fade-in-up delay-${index + 3}`}
-              >
-                <p className="text-sm font-semibold text-white group-hover:text-blue-200 transition-colors">{sample.label}</p>
-                <p className="mt-2 text-sm leading-6 text-slate-400">{sample.description}</p>
-              </button>
-            ))}
-          </div>
-        </section>
-
-        <section className="glass-card-static rounded-[1.75rem] p-5 animate-fade-in-up delay-3">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Platform capabilities</p>
-          <div className="mt-4 space-y-3">
-            <div className="glass-card rounded-[1.2rem] px-4 py-4">
-              <Clock3 className="h-4 w-4 text-amber-300" />
-              <p className="mt-3 text-sm font-semibold text-white">Persistent reports</p>
-              <p className="mt-2 text-sm leading-6 text-slate-400">
-                Analyses are persisted by the backend so history survives refreshes.
-              </p>
-            </div>
-            <div className="glass-card rounded-[1.2rem] px-4 py-4">
-              <Sparkles className="h-4 w-4 text-blue-300" />
-              <p className="mt-3 text-sm font-semibold text-white">Multi-page experience</p>
-              <p className="mt-2 text-sm leading-6 text-slate-400">
-                Home, workspace, report, history, and methodology pages give the product a clear structure.
-              </p>
-            </div>
-          </div>
-        </section>
-
-        <section className="space-y-4 animate-fade-in-up delay-4">
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Recent analyses</p>
-            <Link to="/history" className="text-sm font-medium text-blue-300 transition-all duration-300 hover:text-blue-200">
-              View all
-            </Link>
-          </div>
-          {recentSessions.length ? (
-            recentSessions.map((session) => (
-              <SessionCard key={session.id} session={session} onReuseSession={onReuseSession} />
-            ))
-          ) : (
-            <div className="glass-card rounded-[1.5rem] border-dashed px-4 py-5 text-sm leading-7 text-slate-400">
-              Completed analyses will appear after the first successful run.
             </div>
           )}
-        </section>
+
+          {/* Error: analysis interrupted */}
+          {!hasReviewDraft && activeSession?.status === "error" && (
+            <div className="glass-card-static rounded-2xl border border-rose-500/20 bg-rose-500/8 p-6 space-y-3 animate-fade-in-up">
+              <div className="flex items-center gap-2.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-pulse" />
+                <p className="text-sm font-semibold text-rose-400">Analysis Interrupted</p>
+              </div>
+              <p className="text-sm leading-relaxed break-words" style={{ color: "var(--ink-2)" }}>
+                {activeSession.error}
+              </p>
+              <button
+                onClick={onSubmit}
+                className="text-xs font-semibold"
+                style={{ color: "var(--ink-3)", letterSpacing: "0.05em" }}
+              >
+                Try again →
+              </button>
+            </div>
+          )}
+
+          {/* Claim review */}
+          {hasReviewDraft && (
+            <div className="animate-fade-in">
+              <ClaimReviewPanel
+                draft={claimDraft}
+                onUpdateClaim={onUpdateDraftClaim}
+                onAddClaim={onAddDraftClaim}
+                onRemoveClaim={onRemoveDraftClaim}
+                onVerifyReviewedClaims={onVerifyReviewedClaims}
+                onDiscardDraft={onDiscardDraft}
+                isSubmitting={isSubmittingReviewedClaims}
+              />
+            </div>
+          )}
+
+          {/* Authenticity panels */}
+          {previewState && (
+            <div className="space-y-5 animate-fade-in">
+              <AuthenticitySignalsPanel
+                aiDetection={previewState.aiDetection}
+                mediaDetection={previewState.mediaDetection}
+              />
+              <SourceCapturePanel
+                sourceCapture={previewState.sourceCapture}
+                inputMode={previewState.inputMode ?? inputMode}
+              />
+              {previewState.claimExtraction && (
+                <ClaimExtractionPanel claimExtraction={previewState.claimExtraction} />
+              )}
+            </div>
+          )}
+
+          {/* Claim trace */}
+          {previewState?.sourceText && (previewState?.claims?.length ?? 0) > 0 && (
+            <ClaimTracePanel
+              sourceText={previewState.sourceText}
+              claims={previewState.claims}
+              selectedClaimId={selectedClaimId}
+              onSelectClaimId={setSelectedClaimId}
+              isTruncated={previewState.sourceTextTruncated}
+            />
+          )}
+
+          {/* Pipeline progress */}
+          {isLoading && activeSession?.pipelineStage && (
+            <div className="space-y-3 animate-fade-in">
+              <div className="flex items-center justify-between">
+                <span className="label-cap">Pipeline active</span>
+                <span className="label-cap animate-pulse" style={{ color: "var(--blue-400)" }}>
+                  processing…
+                </span>
+              </div>
+              <PipelineProgress stage={activeSession.pipelineStage} progress={activeSession.progress} />
+            </div>
+          )}
+
+          {/* Completion banner */}
+          {!hasReviewDraft && activeSession?.status === "done" && (
+            <div className="glass-card-static flex items-center justify-between gap-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/8 p-5 animate-fade-in-up">
+              <div>
+                <p className="text-sm font-semibold text-emerald-400">Verification complete</p>
+                <p className="text-xs mt-0.5" style={{ color: "var(--ink-3)" }}>
+                  Report has been synthesized and indexed.
+                </p>
+              </div>
+              <Link
+                to={`/report/${getReportRouteId(activeSession)}`}
+                className="btn-primary text-xs shrink-0"
+              >
+                View report <ChevronRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+          )}
+
+          {/* Live preview strip */}
+          {!hasReviewDraft && hasResults && (
+            <section className="space-y-4 animate-fade-in">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-bold text-white">Live Preview</h3>
+                <Link
+                  to={`/report/${getReportRouteId(activeSession)}`}
+                  className="text-xs font-semibold text-blue-400 hover:underline"
+                >
+                  Fullscreen report →
+                </Link>
+              </div>
+              <AccuracyReport results={activeSession.results} claims={activeSession.claims} />
+            </section>
+          )}
+        </div>
+
+        {/* ── Sidebar ──────────────────────────────────────────── */}
+        <aside className="min-w-0 space-y-8">
+
+          {/* Quick presets */}
+          <div className="glass-card-static p-5 space-y-4">
+            <span className="label-cap">Quick presets</span>
+            <div className="space-y-2">
+              {SAMPLE_INPUTS.map((sample, i) => (
+                <button
+                  key={i}
+                  onClick={() => handleApplySample(sample)}
+                  className="glass-card group w-full p-4 text-left animate-fade-in-up"
+                  style={{ animationDelay: `${i * 0.05}s` }}
+                >
+                  <p className="text-xs font-semibold text-white group-hover:text-blue-300 transition-colors">
+                    {sample.label}
+                  </p>
+                  <p className="mt-1 text-xs leading-relaxed break-words" style={{ color: "var(--ink-3)" }}>
+                    {sample.description}
+                  </p>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Recent passes */}
+          <div className="glass-card-static p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="label-cap">Recent passes</span>
+              <Link to="/history" className="text-[10px] font-bold text-blue-500 hover:underline uppercase tracking-wider">
+                All →
+              </Link>
+            </div>
+            <div className="space-y-2.5">
+              {recentSessions.length > 0 ? (
+                recentSessions.map((s) => (
+                  <SessionCard key={s.id} session={s} onReuseSession={onReuseSession} compact />
+                ))
+              ) : (
+                <p className="rounded-xl border border-dashed p-6 text-center text-xs" style={{ borderColor: "var(--border-faint)", color: "var(--ink-3)" }}>
+                  No passes yet
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Methodology link */}
+          <Link
+            to="/methodology"
+            className="glass-card group flex items-start gap-4 p-5"
+          >
+            <BookOpenText className="h-5 w-5 shrink-0 text-blue-400 mt-0.5" />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-white group-hover:text-blue-300 transition-colors">
+                Scientific methodology
+              </p>
+              <p className="mt-1 text-xs leading-relaxed" style={{ color: "var(--ink-3)" }}>
+                Learn how the retrieval engine generates credibility scores.
+              </p>
+            </div>
+            <ArrowRight className="h-4 w-4 shrink-0 self-center text-white/20 group-hover:text-blue-400 transition-colors" />
+          </Link>
+        </aside>
       </div>
     </div>
   );

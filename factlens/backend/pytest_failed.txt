@@ -1,0 +1,30 @@
+============================= test session starts =============================
+platform win32 -- Python 3.8.10, pytest-7.4.0, pluggy-1.5.0 -- c:\python38\python.exe
+cachedir: .pytest_cache
+rootdir: c:\Users\anubhab samanta\OneDrive\Documents\Desktop\FactLens\factlens\backend
+plugins: anyio-4.5.2, asyncio-0.23.8, cov-5.0.0, flask-1.3.0, timeout-2.4.0
+asyncio: mode=strict
+collecting ... collected 98 items / 92 deselected / 6 selected
+run-last-failure: rerun previous 6 failures
+
+tests/test_retriever.py::RetrieverTests::test_retrieve_evidence_uses_llm_planned_recovery_queries PASSED [ 16%]
+tests/test_retriever.py::RetrieverTests::test_search_query_provider_attempts_uses_wikipedia_when_other_search_is_unavailable PASSED [ 33%]
+tests/test_scoring.py::ScoringTests::test_retrieve_evidence_runs_recovery_when_primary_pass_is_sparse PASSED [ 50%]
+tests/test_scoring.py::ScoringTests::test_retrieve_evidence_skips_recovery_when_primary_pass_is_strong PASSED [ 66%]
+tests/test_scoring.py::ScoringTests::test_retrieve_evidence_surfaces_grounded_passages PASSED [ 83%]
+tests/test_scoring.py::ScoringTests::test_verify_claim_blocks_reflection_from_forcing_false_without_direct_evidence FAILED [100%]
+
+================================== FAILURES ===================================
+_ ScoringTests.test_verify_claim_blocks_reflection_from_forcing_false_without_direct_evidence _
+tests\test_scoring.py:1528: in test_verify_claim_blocks_reflection_from_forcing_false_without_direct_evidence
+    self.assertTrue(
+E   AssertionError: False is not true
+============================== warnings summary ===============================
+..\..\..\..\..\..\..\..\python38\lib\site-packages\langchain_nvidia_ai_endpoints\_common.py:197
+  c:\python38\lib\site-packages\langchain_nvidia_ai_endpoints\_common.py:197: UserWarning: Found meta/llama-3.2-90b-vision-instruct in available_models, but type is unknown and inference may fail.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/test_scoring.py::ScoringTests::test_verify_claim_blocks_reflection_from_forcing_false_without_direct_evidence
+====== 1 failed, 5 passed, 92 deselected, 1 warning in 85.41s (0:01:25) =======

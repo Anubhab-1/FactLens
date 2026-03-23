@@ -1,93 +1,171 @@
-import { LoaderCircle, Search, Zap } from "lucide-react";
+import { useEffect } from "react";
+import { FileText, Globe, LoaderCircle, Search, X, Youtube, Zap } from "lucide-react";
+
+const INPUT_MODES = [
+  { id: "text", label: "Text",    Icon: FileText },
+  { id: "url",  label: "URL",     Icon: Globe    },
+];
+
+const CHAR_LIMIT = 15000;
 
 function InputPanel({
-  inputMode,
-  setInputMode,
-  inputValue,
-  setInputValue,
-  onSubmit,
-  isLoading,
+  inputMode, setInputMode,
+  inputValue, setInputValue,
+  onSubmit, onReviewClaims,
+  isLoading, isReviewLoading,
 }) {
+  const isBusy  = isLoading || isReviewLoading;
+  const charLen = inputValue.length;
+  const nearLimit = charLen > 14000;
+  const overLimit = charLen >= CHAR_LIMIT;
+  const isYoutube =
+    inputMode === "url" &&
+    (inputValue.includes("youtube.com") || inputValue.includes("youtu.be"));
+
+  // Ctrl/Cmd + Enter shortcut
+  useEffect(() => {
+    const onKey = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && !isBusy && inputValue.trim()) {
+        e.preventDefault();
+        onSubmit();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [isBusy, inputValue, onSubmit]);
+
   return (
-    <section className="glass-card-static overflow-hidden rounded-[2rem] animate-fade-in-up gradient-border">
-      <header className="border-b border-white/6 bg-gradient-to-r from-slate-900/80 to-slate-950/80 px-4 py-4 sm:px-6 sm:py-5">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 text-blue-300 ring-1 ring-inset ring-blue-400/20">
-              <Search className="h-5 w-5" />
-            </div>
-            <div className="min-w-0">
-              <p className="font-display text-2xl leading-none text-white sm:text-3xl">FactLens</p>
-              <p className="mt-1 hidden text-sm text-slate-400 sm:block">
-                Inspect claims, search the web, and score credibility in one pass.
-              </p>
-            </div>
-          </div>
-          <div className="hidden glass-pill rounded-full px-3 py-1.5 text-xs font-medium uppercase tracking-[0.24em] text-slate-400 md:block">
-            Verification pipeline
-          </div>
-        </div>
-      </header>
+    <div className="glass-card-static overflow-hidden animate-fade-in-up">
 
-      <div className="space-y-5 px-4 py-5 sm:px-6 sm:py-6">
-        <div className="inline-flex rounded-full border border-white/8 bg-white/4 p-1">
-          {["text", "url"].map((mode) => {
-            const selected = inputMode === mode;
-            return (
-              <button
-                key={mode}
-                type="button"
-                onClick={() => setInputMode(mode)}
-                disabled={isLoading}
-                className={`rounded-full px-5 py-2 text-sm font-medium transition-all duration-300 ${
-                  selected
-                    ? "bg-gradient-to-r from-blue-500 to-blue-400 text-white shadow-lg shadow-blue-900/30"
-                    : "text-slate-400 hover:text-white"
-                } ${isLoading ? "cursor-not-allowed opacity-60" : ""}`}
-              >
-                {mode === "text" ? "Paste Text" : "Enter URL"}
-              </button>
-            );
-          })}
-        </div>
+      {/* ── Mode tabs ───────────────────────────────────────── */}
+      <div
+        className="flex items-center gap-1 border-b px-4 py-2.5"
+        style={{ borderColor: "var(--border-faint)" }}
+      >
+        {INPUT_MODES.map(({ id, label, Icon }) => {
+          const active = inputMode === id;
+          return (
+            <button
+              key={id}
+              type="button"
+              disabled={isBusy}
+              onClick={() => setInputMode(id)}
+              className={`flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all duration-200 ${
+                active
+                  ? "bg-white/8 text-white"
+                  : "text-white/30 hover:bg-white/4 hover:text-white/70"
+              } disabled:opacity-40`}
+            >
+              <Icon className="h-3.5 w-3.5 shrink-0" />
+              {label}
+            </button>
+          );
+        })}
 
+        {isYoutube && (
+          <span className="ml-auto flex items-center gap-1.5 rounded-full bg-rose-500/10 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-rose-400 ring-1 ring-inset ring-rose-500/20 animate-fade-in">
+            <Youtube className="h-3 w-3 shrink-0" />
+            YouTube
+          </span>
+        )}
+      </div>
+
+      {/* ── Input area ──────────────────────────────────────── */}
+      <div className="relative group/input">
         {inputMode === "text" ? (
           <textarea
             value={inputValue}
-            onChange={(event) => setInputValue(event.target.value)}
-            disabled={isLoading}
-            rows={10}
+            onChange={(e) => setInputValue(e.target.value)}
+            disabled={isBusy}
+            rows={9}
             placeholder="Paste an article, transcript, or social post to extract and verify its claims."
-            className="min-h-48 w-full rounded-[1.5rem] border border-white/8 bg-slate-950/40 px-4 py-4 text-sm leading-7 text-white outline-none transition-all duration-300 placeholder:text-slate-500 focus:border-blue-400/30 focus:bg-slate-950/60 sm:min-h-72 sm:px-5 disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full resize-none px-5 py-5 text-[15px] leading-relaxed text-white placeholder:text-white/20 focus:outline-none sm:px-7 sm:py-6 disabled:opacity-50"
           />
         ) : (
           <input
             type="url"
             value={inputValue}
-            onChange={(event) => setInputValue(event.target.value)}
-            disabled={isLoading}
+            onChange={(e) => setInputValue(e.target.value)}
+            disabled={isBusy}
             placeholder="https://example.com/article"
-            className="w-full rounded-[1.5rem] border border-white/8 bg-slate-950/40 px-4 py-4 text-sm text-white outline-none transition-all duration-300 placeholder:text-slate-500 focus:border-blue-400/30 focus:bg-slate-950/60 sm:px-5 disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full px-5 py-6 text-[15px] text-white placeholder:text-white/20 focus:outline-none sm:px-7 disabled:opacity-50"
           />
         )}
 
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <p className="max-w-2xl text-sm text-slate-400">
-            Extracts atomic claims, gathers sources, and explains how each verdict was reached.
-          </p>
+        {inputValue && !isBusy && (
+          <button
+            type="button"
+            onClick={() => setInputValue("")}
+            className="absolute top-4 right-4 flex h-8 w-8 items-center justify-center rounded-xl bg-white/5 text-white/40 opacity-0 transition-all hover:bg-white/10 hover:text-white group-hover/input:opacity-100 sm:top-5 sm:right-5"
+            title="Clear input"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+
+      {/* ── Footer ──────────────────────────────────────────── */}
+      <div
+        className="flex flex-col gap-3 border-t px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-7"
+        style={{ borderColor: "var(--border-faint)" }}
+      >
+        {/* Char counter */}
+        <span
+          className="font-mono text-xs tabular-nums"
+          style={{
+            color: overLimit
+              ? "var(--rose)"
+              : nearLimit
+              ? "var(--amber)"
+              : "var(--ink-3)",
+          }}
+        >
+          {charLen.toLocaleString()} / {CHAR_LIMIT.toLocaleString()}
+        </span>
+
+        {/* Action buttons */}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onReviewClaims}
+            disabled={isBusy || !inputValue.trim()}
+            className="btn-secondary text-xs"
+          >
+            {isReviewLoading ? (
+              <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Search className="h-3.5 w-3.5" />
+            )}
+            Review claims first
+          </button>
 
           <button
             type="button"
             onClick={onSubmit}
-            disabled={isLoading || !inputValue.trim()}
-            className="btn-shimmer inline-flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-blue-500 to-blue-400 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-600/25 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/30 hover:scale-[1.03] sm:w-auto sm:min-w-56 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100"
+            disabled={isBusy || !inputValue.trim() || overLimit}
+            className="btn-primary btn-shimmer text-xs"
           >
-            {isLoading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
-            {isLoading ? "Analyzing..." : "Verify with FactLens"}
+            {isLoading ? (
+              <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Zap className="h-3.5 w-3.5 fill-current" />
+            )}
+            Verify now
           </button>
         </div>
       </div>
-    </section>
+
+      {/* Keyboard hint */}
+      <p
+        className="border-t px-5 py-2.5 text-center font-mono text-[10px]"
+        style={{ borderColor: "var(--border-faint)", color: "var(--ink-3)" }}
+      >
+        {isYoutube
+          ? "FactLens will transcribe the video audio automatically."
+          : <>Press <kbd className="rounded-md bg-white/6 px-1.5 py-0.5">Ctrl+Enter</kbd> to verify instantly.</>
+        }
+      </p>
+    </div>
   );
 }
 

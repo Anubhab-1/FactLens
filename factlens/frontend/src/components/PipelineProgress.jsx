@@ -3,8 +3,8 @@ import { Check, LoaderCircle } from "lucide-react";
 const STEPS = [
   "Prepare input",
   "Extract claims",
-  "Retrieve evidence",
-  "Verify claims",
+  "Concurrent Verification",
+  "Final Reflection",
   "Report ready",
 ];
 
@@ -15,10 +15,10 @@ function getActiveIndex(stage) {
   if (stage === "extracting") {
     return 1;
   }
-  if (stage === "retrieving") {
+  if (stage === "verifying") {
     return 2;
   }
-  if (stage === "verifying") {
+  if (stage === "reflecting") {
     return 3;
   }
   if (stage === "done") {
@@ -29,25 +29,28 @@ function getActiveIndex(stage) {
 
 function getStatusMessage(stage, progress) {
   if (stage === "extracting") {
-    return "Identifying verifiable claims in the text…";
+    return "Identifying and refining atomic claims…";
   }
   if (stage === "retrieving") {
-    return `Searching the web… (${progress.done}/${progress.total} claims)`;
+    return `Searching web & counter-evidence… (${progress.done}/${progress.total} claims)`;
   }
   if (stage === "verifying") {
-    return `Verifying against evidence… (${progress.done}/${progress.total} claims)`;
+    return `Concurrent web search & CoT verification… (${progress.done}/${progress.total} claims)`;
+  }
+  if (stage === "reflecting") {
+    return "Performing session-wide consistency audit…";
   }
   if (stage === "detecting") {
     return "Running AI authorship analysis…";
   }
   if (stage === "media_detecting") {
-    return "Analyzing extracted images for deepfake signals…";
+    return "Reviewing extracted images for synthetic-media risk signals…";
   }
   if (stage === "scraping") {
     return "Fetching and cleaning article text…";
   }
   if (stage === "done") {
-    return "Report ready.";
+    return "Verification report ready.";
   }
   return "Waiting to start…";
 }

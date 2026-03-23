@@ -2,29 +2,21 @@ from __future__ import annotations
 
 import ast
 import json
-import os
-from pathlib import Path
 import re
 
-from dotenv import load_dotenv
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_nvidia_ai_endpoints import ChatNVIDIA
 
-from pipeline.scoring import classify_claim_type, infer_time_sensitivity
+from llm_provider import create_chat_model
+from pipeline.scoring import classify_claim_type, infer_time_sensitivity, tokenize
 
-load_dotenv(Path(__file__).resolve().parents[1] / ".env")
+llm, llm_descriptor = create_chat_model("extractor", temperature=0.1, max_tokens=2048)
 
-
-llm = (
-    ChatNVIDIA(
-        model="meta/llama-3.1-70b-instruct",
-        api_key=os.getenv("NVIDIA_API_KEY"),
-        temperature=0.1,
-        max_tokens=2048,
-    )
-    if os.getenv("NVIDIA_API_KEY")
-    else None
-)
+EXTRACTION_CHUNK_TRIGGER_CHARS = 5000
+EXTRACTION_CHUNK_MAX_CHARS = 3500
+EXTRACTION_CHUNK_MAX_SENTENCES = 10
+EXTRACTION_MAX_CLAIMS = 24
+EXTRACTION_MAX_CHUNKS = 8
+EXTRACTION_DIRECT_MAX_CHARS = 4500
 
 SYSTEM_PROMPT = """You are a precise fact-checking assistant. Your job is to extract every
 verifiable, atomic factual claim from the provided text.
@@ -47,6 +39,30 @@ Output format:
   }
 ]"""
 
+REFINEMENT_PROMPT = """You are a meticulous fact-checking editor. Your task is to refine and
+improve a list of extracted factual claims.
+
+Rules:
+1. Split any claim that contains multiple distinct facts into separate atomic claims.
+2. Remove any claims that are subjective, opinions, or not verifiable facts.
+3. Ensure each claim is clear, unambiguous, and can be verified independently of the original text.
+4. Preserve all original context and time-sensitivity flags.
+5. NEVER correct, replace, or "fix" a claim. If the original text states something false, keep the false claim exactly as stated.
+6. Only keep wording that is directly grounded in the original extracted claims and their contexts.
+7. Remove any redundant or near-duplicate claims.
+8. Return ONLY a valid JSON array. No explanation.
+
+Output format:
+[
+  {
+    'id': '1',
+    'claim': 'Refined atomic claim',
+    'context': 'Original context',
+    'time_sensitive': boolean,
+    'claim_type': 'string'
+  }
+]"""
+
 SUBJECTIVE_PREFIXES = (
     "i think",
     "i believe",
@@ -57,10 +73,15 @@ SUBJECTIVE_PREFIXES = (
     "maybe",
     "perhaps",
 )
+CLAIM_GROUNDING_MIN_OVERLAP = 0.6
 
 
 def _non_empty_lines(text: str) -> list[str]:
     return [line.strip(" -•\t") for line in (text or "").splitlines() if line.strip()]
+
+
+def _normalize_text(text: str) -> str:
+    return re.sub(r"\s+", " ", (text or "").strip())
 
 
 def _looks_like_outline(text: str) -> bool:
@@ -119,6 +140,12 @@ def _parse_json_array(raw_text: str) -> list[dict]:
     return parsed
 
 
+def _claim_fingerprint(value: str) -> str:
+    normalized = _normalize_text(value)
+    normalized = re.sub(r"[^\w\s%.-]", "", normalized.lower())
+    return normalized.strip()
+
+
 def _normalize_claims(claims: list[dict]) -> list[dict]:
     normalized_claims = []
 
@@ -141,6 +168,29 @@ def _normalize_claims(claims: list[dict]) -> list[dict]:
         )
 
     return normalized_claims
+
+
+def _dedupe_claims(claims: list[dict], *, max_claims: int = EXTRACTION_MAX_CLAIMS) -> list[dict]:
+    deduped: list[dict] = []
+    seen: set[str] = set()
+
+    for claim in claims:
+        claim_text = str(claim.get("claim", "")).strip()
+        fingerprint = _claim_fingerprint(claim_text)
+        if not claim_text or not fingerprint or fingerprint in seen:
+            continue
+
+        seen.add(fingerprint)
+        deduped.append(
+            {
+                **claim,
+                "id": str(len(deduped) + 1),
+            }
+        )
+        if len(deduped) >= max_claims:
+            break
+
+    return deduped
 
 
 def _split_candidate_sentences(text: str) -> list[str]:
@@ -211,12 +261,129 @@ def _heuristic_extract_claims(text: str, max_claims: int = 12) -> list[dict]:
         if len(fallback_claims) >= max_claims:
             break
 
+    if not fallback_claims:
+        normalized = _normalize_text(text)
+        if 8 <= len(normalized) <= 240 and _looks_verifiable(normalized):
+            fallback_claims.append(
+                {
+                    "id": "1",
+                    "claim": normalized,
+                    "context": normalized,
+                    "time_sensitive": infer_time_sensitivity(normalized),
+                    "claim_type": classify_claim_type(normalized),
+                }
+            )
+
     return fallback_claims
+
+
+def _claim_overlap_ratio(claim_text: str, source_text: str) -> float:
+    claim_tokens = set(tokenize(claim_text))
+    source_tokens = set(tokenize(source_text))
+    if not claim_tokens or not source_tokens:
+        return 0.0
+    return len(claim_tokens & source_tokens) / len(claim_tokens)
+
+
+def _claim_is_grounded(claim: dict, source_text: str) -> bool:
+    claim_text = str(claim.get("claim", "")).strip()
+    context = str(claim.get("context", claim_text)).strip()
+    if not claim_text:
+        return False
+
+    claim_fp = _claim_fingerprint(claim_text)
+    combined_source = f"{source_text} {context}".strip()
+    combined_fp = _claim_fingerprint(combined_source)
+    if claim_fp and combined_fp and claim_fp in combined_fp:
+        return True
+
+    overlap = _claim_overlap_ratio(claim_text, combined_source)
+    if overlap < CLAIM_GROUNDING_MIN_OVERLAP:
+        return False
+
+    claim_numbers = set(re.findall(r"\d+(?:\.\d+)?", claim_text))
+    source_numbers = set(re.findall(r"\d+(?:\.\d+)?", combined_source))
+    if claim_numbers and not claim_numbers.issubset(source_numbers):
+        return False
+
+    return True
+
+
+def _filter_grounded_claims(claims: list[dict], source_text: str) -> tuple[list[dict], int]:
+    grounded = []
+    dropped_count = 0
+
+    for claim in claims:
+        if _claim_is_grounded(claim, source_text):
+            grounded.append(claim)
+        else:
+            dropped_count += 1
+
+    return grounded, dropped_count
+
+
+def _chunk_text_for_extraction(
+    text: str,
+    *,
+    max_chars: int = EXTRACTION_CHUNK_MAX_CHARS,
+    max_sentences: int = EXTRACTION_CHUNK_MAX_SENTENCES,
+) -> list[str]:
+    normalized = _normalize_text(text)
+    if not normalized:
+        return []
+    if len(normalized) <= max_chars:
+        return [normalized]
+
+    sentences = [
+        sentence.strip()
+        for sentence in re.split(r"(?<=[.!?])\s+", normalized)
+        if sentence.strip()
+    ]
+    if not sentences:
+        return [normalized[:max_chars].strip()]
+
+    chunks: list[str] = []
+    current: list[str] = []
+    current_length = 0
+
+    for sentence in sentences:
+        candidate_length = current_length + len(sentence) + (1 if current else 0)
+        if current and (candidate_length > max_chars or len(current) >= max_sentences):
+            chunks.append(" ".join(current).strip())
+            current = current[-1:]
+            current_length = len(current[0]) if current else 0
+
+        if len(sentence) > max_chars:
+            for index in range(0, len(sentence), max_chars):
+                fragment = sentence[index : index + max_chars].strip()
+                if not fragment:
+                    continue
+                if current:
+                    chunks.append(" ".join(current).strip())
+                    current = []
+                    current_length = 0
+                chunks.append(fragment)
+            continue
+
+        current.append(sentence)
+        current_length = sum(len(item) for item in current) + max(len(current) - 1, 0)
+
+    if current:
+        chunks.append(" ".join(current).strip())
+
+    return [chunk for chunk in chunks if chunk]
+
+
+def _direct_extraction_text(text: str, *, max_chars: int = EXTRACTION_DIRECT_MAX_CHARS) -> str:
+    normalized = _normalize_text(text)
+    if len(normalized) <= max_chars:
+        return normalized
+    return normalized[:max_chars].rsplit(" ", 1)[0].strip()
 
 
 async def _invoke_extractor(user_message: str) -> str:
     if llm is None:
-        raise RuntimeError("NVIDIA_API_KEY is not configured.")
+        raise RuntimeError(llm_descriptor.issue or "No claim-extraction model is configured.")
 
     response = await llm.ainvoke(
         [
@@ -227,30 +394,239 @@ async def _invoke_extractor(user_message: str) -> str:
     return response.content if isinstance(response.content, str) else str(response.content)
 
 
-async def extract_claims(text: str) -> list[dict]:
-    if not (text or "").strip():
-        return []
-
-    if _looks_like_outline(text):
-        return []
-
-    if llm is None:
-        return _heuristic_extract_claims(text)
-
-    user_message = f"Extract all verifiable claims from this text:\n\n{text}"
-
+async def _extract_llm_claims(user_message: str) -> list[dict]:
     try:
         initial_response = await _invoke_extractor(user_message)
-        normalized = _normalize_claims(_parse_json_array(initial_response))
-        return normalized or _heuristic_extract_claims(text)
+        return _normalize_claims(_parse_json_array(initial_response))
     except (json.JSONDecodeError, ValueError):
-        try:
-            retry_response = await _invoke_extractor(
-                f"{user_message}\n\nReturn only valid JSON, no markdown code blocks."
-            )
-            normalized = _normalize_claims(_parse_json_array(retry_response))
-            return normalized or _heuristic_extract_claims(text)
-        except Exception:
-            return _heuristic_extract_claims(text)
+        retry_response = await _invoke_extractor(
+            f"{user_message}\n\nReturn only valid JSON, no markdown code blocks."
+        )
+        return _normalize_claims(_parse_json_array(retry_response))
+
+async def _refine_extracted_claims(claims: list[dict]) -> list[dict]:
+    if not claims:
+        return []
+
+    claims_json = json.dumps(claims, indent=2)
+    user_message = f"Refine these extracted claims for atomicity and verifiability:\n\n{claims_json}"
+
+    try:
+        if llm is None:
+            return claims
+
+        response = await llm.ainvoke(
+            [
+                SystemMessage(content=REFINEMENT_PROMPT),
+                HumanMessage(content=user_message),
+            ]
+        )
+        raw_content = response.content if isinstance(response.content, str) else str(response.content)
+        refined = _parse_json_array(raw_content)
+        return _normalize_claims(refined)
     except Exception:
-        return _heuristic_extract_claims(text)
+        # Fallback to original claims if refinement fails
+        return claims
+
+
+async def _extract_chunked_claims(text: str) -> tuple[list[dict], list[str]]:
+    all_chunks = _chunk_text_for_extraction(text)
+    chunks = all_chunks[:EXTRACTION_MAX_CHUNKS]
+    if len(chunks) <= 1:
+        return [], []
+
+    collected: list[dict] = []
+    warnings: list[str] = []
+
+    async def _extract_single_chunk(index: int, chunk: str) -> list[dict]:
+        try:
+            return await _extract_llm_claims(
+                (
+                    "Extract all verifiable claims from this text chunk. "
+                    "Only include claims fully stated in this chunk.\n\n"
+                    f"Chunk {index} of {len(chunks)}:\n{chunk}"
+                )
+            )
+        except Exception as exc:
+            warnings.append(f"Chunk {index} extraction failed: {exc}")
+            return []
+
+    # Parallelize extraction across all chunks
+    results = await asyncio.gather(*[_extract_single_chunk(i+1, c) for i, c in enumerate(chunks)])
+    for chunk_claims in results:
+        collected.extend(chunk_claims)
+
+    deduped = _dedupe_claims(collected)
+    if deduped:
+        warnings.insert(
+            0,
+            f"Long input was extracted in {len(chunks)} chunks for better claim coverage.",
+        )
+    if len(all_chunks) > len(chunks):
+        warnings.append(
+            f"Only the first {len(chunks)} extraction chunks were processed to keep long-article drafting responsive."
+        )
+
+    return deduped, list(dict.fromkeys(warnings))
+
+
+def _build_extraction_meta(
+    *,
+    mode: str,
+    claims: list[dict],
+    warnings: list[str] | None = None,
+    error: str | None = None,
+    source_mode: str | None = None,
+) -> dict:
+    return {
+        "mode": mode,
+        "source_mode": source_mode,
+        "provider": llm_descriptor.provider,
+        "provider_label": llm_descriptor.provider_label,
+        "model": llm_descriptor.model,
+        "warnings": list(dict.fromkeys(warnings or [])),
+        "error": error,
+        "claim_count": len(claims),
+    }
+
+
+async def extract_claims_with_metadata(text: str) -> dict:
+    raw_text = text or ""
+    normalized_text = _normalize_text(text)
+    if not normalized_text:
+        return {
+            "claims": [],
+            "meta": _build_extraction_meta(
+                mode="failed",
+                claims=[],
+                error="No input text was provided for claim extraction.",
+            ),
+        }
+
+    if _looks_like_outline(raw_text):
+        return {
+            "claims": [],
+            "meta": _build_extraction_meta(
+                mode="outline_blocked",
+                claims=[],
+                warnings=[
+                    "The input looked like an outline or table of contents, so no automatic claims were drafted."
+                ],
+            ),
+        }
+
+    if llm is None:
+        if llm_descriptor.status == "unconfigured":
+            claims = _heuristic_extract_claims(normalized_text)
+            return {
+                "claims": claims,
+                "meta": _build_extraction_meta(
+                    mode="heuristic",
+                    claims=claims,
+                    warnings=[
+                        "No LLM provider is configured, so FactLens used a heuristic claim draft. Review these claims carefully before verification."
+                    ],
+                ),
+            }
+
+        return {
+            "claims": [],
+            "meta": _build_extraction_meta(
+                mode="failed",
+                claims=[],
+                error=llm_descriptor.issue or "Claim extraction is not configured correctly.",
+            ),
+        }
+
+    try:
+        warnings: list[str] = []
+        normalized: list[dict] = []
+
+        if len(normalized_text) > EXTRACTION_CHUNK_TRIGGER_CHARS:
+            normalized, warnings = await _extract_chunked_claims(normalized_text)
+
+        if not normalized:
+            direct_text = _direct_extraction_text(normalized_text)
+            if direct_text != normalized_text:
+                warnings.append(
+                    "FactLens retried claim extraction on a shortened lead section to keep long-input drafting fast."
+                )
+            normalized = await _extract_llm_claims(
+                f"Extract all verifiable claims from this text:\n\n{direct_text}"
+            )
+
+        # NEW: Iterative Refinement for high accuracy
+        if normalized:
+            refined = await _refine_extracted_claims(normalized)
+            if refined:
+                normalized = refined
+                warnings.append("Claims were refined for atomicity and verifiability.")
+
+        if normalized:
+            normalized, dropped_ungrounded = _filter_grounded_claims(normalized, normalized_text)
+            if dropped_ungrounded:
+                warnings.append(
+                    f"Dropped {dropped_ungrounded} extracted claim"
+                    f"{'' if dropped_ungrounded == 1 else 's'} that were not grounded in the source text."
+                )
+
+        normalized = _dedupe_claims(normalized)
+        if not normalized:
+            heuristic_claims = _heuristic_extract_claims(normalized_text)
+            warnings.append("The claim-extraction model returned no verifiable claims.")
+            if heuristic_claims:
+                warnings.append(
+                    "FactLens fell back to a heuristic claim draft. Review these claims carefully before verification."
+                )
+                return {
+                    "claims": heuristic_claims,
+                    "meta": _build_extraction_meta(
+                        mode="heuristic",
+                        source_mode="llm",
+                        claims=heuristic_claims,
+                        warnings=warnings,
+                    ),
+                }
+
+        return {
+            "claims": normalized,
+            "meta": _build_extraction_meta(
+                mode="llm",
+                claims=normalized,
+                warnings=list(dict.fromkeys(warnings)),
+            ),
+        }
+    except Exception as exc:
+        heuristic_claims = _heuristic_extract_claims(normalized_text)
+        if heuristic_claims:
+            return {
+                "claims": heuristic_claims,
+                "meta": _build_extraction_meta(
+                    mode="heuristic",
+                    source_mode="llm",
+                    claims=heuristic_claims,
+                    warnings=[
+                        (
+                            "The claim-extraction model returned unusable output, so FactLens fell back to a "
+                            "heuristic claim draft. Review these claims carefully before verification."
+                        )
+                    ],
+                    error=str(exc),
+                ),
+            }
+
+        return {
+            "claims": [],
+            "meta": _build_extraction_meta(
+                mode="failed",
+                claims=[],
+                error=(
+                    "Claim extraction failed before a trustworthy draft could be produced. "
+                    f"{exc}"
+                ),
+            ),
+        }
+
+
+async def extract_claims(text: str) -> list[dict]:
+    return (await extract_claims_with_metadata(text))["claims"]

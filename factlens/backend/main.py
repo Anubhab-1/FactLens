@@ -4,7 +4,7 @@ import asyncio
 import json
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query, Request
@@ -15,11 +15,13 @@ from pydantic import BaseModel, model_validator
 load_dotenv(Path(__file__).resolve().parent / ".env")
 
 from pipeline.ai_detector import detect_ai
-from pipeline.extractor import extract_claims
+from pipeline.extractor import extract_claims_with_metadata
 from pipeline.media_detector import detect_media
 from pipeline.retriever import retrieve_evidence
 from pipeline.scraper import scrape_url
-from pipeline.verifier import verify_claim
+from pipeline.scoring import classify_claim_type, infer_time_sensitivity
+from pipeline.verifier import recalculate_claim_result, verify_claim
+from pipeline.youtube import get_youtube_transcript, extract_video_id
 from security import InMemoryRateLimiter, create_session_id, get_client_identifier, get_rate_limit_for_request
 from settings import load_settings
 from storage.report_exports import build_report_pdf
@@ -53,13 +55,60 @@ class AnalyzeRequest(BaseModel):
     @model_validator(mode="after")
     def validate_input(self) -> "AnalyzeRequest":
         if not (self.text and self.text.strip()) and not (self.url and self.url.strip()):
-            raise ValueError("At least one of text or url is provided.")
+            raise ValueError("At least one of 'text' or 'url' must be provided.")
         return self
 
 
 class ReportUpdateRequest(BaseModel):
     is_pinned: Optional[bool] = None
     is_archived: Optional[bool] = None
+
+
+class SourceStanceOverrideInput(BaseModel):
+    source_id: Optional[str] = None
+    source_url: Optional[str] = None
+    stance: str
+
+    @model_validator(mode="after")
+    def validate_source_reference(self) -> "SourceStanceOverrideInput":
+        if not (self.source_id and self.source_id.strip()) and not (
+            self.source_url and self.source_url.strip()
+        ):
+            raise ValueError("Each override must include source_id or source_url.")
+        return self
+
+
+class ClaimOverrideRequest(BaseModel):
+    overrides: List[SourceStanceOverrideInput] = []
+
+
+class ReviewClaimInput(BaseModel):
+    id: Optional[str] = None
+    claim: str
+    context: Optional[str] = None
+    time_sensitive: Optional[bool] = None
+    claim_type: Optional[str] = None
+
+
+class AnalyzeReviewedRequest(BaseModel):
+    source_text: str
+    claims: List[ReviewClaimInput]
+    input_mode: str = "text"
+    input_value: Optional[str] = None
+    source_capture: Optional[dict] = None
+    claim_extraction: Optional[dict] = None
+    ai_detection: Optional[dict] = None
+    media_detection: Optional[dict] = None
+
+    @model_validator(mode="after")
+    def validate_payload(self) -> "AnalyzeReviewedRequest":
+        if not (self.source_text or "").strip():
+            raise ValueError("source_text must be provided.")
+        if self.input_mode not in {"text", "url"}:
+            raise ValueError("input_mode must be 'text' or 'url'.")
+        if not any((claim.claim or "").strip() for claim in self.claims):
+            raise ValueError("At least one reviewed claim is required.")
+        return self
 
 
 def _sse(payload: dict) -> str:
@@ -70,8 +119,82 @@ def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _prepare_source_text_payload(text: str, max_chars: int = 15000) -> dict:
+    normalized = (text or "").strip()
+    if len(normalized) <= max_chars:
+        return {
+            "source_text": normalized,
+            "source_text_truncated": False,
+        }
+
+    return {
+        "source_text": normalized[:max_chars].rstrip(),
+        "source_text_truncated": True,
+    }
+
+
+def _claim_sort_key(value: object) -> tuple:
+    text = str(value or "").strip()
+    return (0, int(text)) if text.isdigit() else (1, text)
+
+
 def _sort_results(results: list[dict]) -> list[dict]:
-    return sorted(results, key=lambda item: int(item.get("claim_id", 0)))
+    return sorted(results, key=lambda item: _claim_sort_key(item.get("claim_id")))
+
+
+def _normalize_review_claims(claims: list[ReviewClaimInput]) -> list[dict]:
+    normalized_claims = []
+
+    for index, claim in enumerate(claims, start=1):
+        claim_text = (claim.claim or "").strip()
+        if not claim_text:
+            continue
+
+        context = (claim.context or claim_text).strip() or claim_text
+        normalized_claims.append(
+            {
+                "id": str(claim.id or index),
+                "claim": claim_text,
+                "context": context,
+                "time_sensitive": bool(
+                    claim.time_sensitive
+                    if claim.time_sensitive is not None
+                    else infer_time_sensitivity(claim_text)
+                ),
+                "claim_type": str(claim.claim_type or classify_claim_type(claim_text)),
+            }
+        )
+
+    return normalized_claims
+
+
+def _attach_url_context_to_claims(
+    claims: list[dict],
+    *,
+    source_url: str,
+    source_text: str,
+    source_capture: dict | None = None,
+) -> list[dict]:
+    source_url = (source_url or "").strip()
+    source_text = (source_text or "").strip()
+    if not source_url or not source_text:
+        return claims
+
+    source_title = ""
+    if isinstance(source_capture, dict):
+        source_title = str(source_capture.get("title", "") or "").strip()
+
+    enriched_claims = []
+    for claim in claims:
+        enriched_claims.append(
+            {
+                **claim,
+                "source_url": source_url,
+                "source_title": source_title,
+                "source_text": source_text,
+            }
+        )
+    return enriched_claims
 
 
 def _serialize_report_for_viewer(report: dict, viewer_session_id: str) -> dict:
@@ -83,12 +206,48 @@ def _serialize_report_for_viewer(report: dict, viewer_session_id: str) -> dict:
     return payload
 
 
+def _manual_review_claim_extraction(payload: dict | None, claim_count: int) -> dict:
+    existing = dict(payload or {})
+    warnings = [
+        *[
+            str(item).strip()
+            for item in existing.get("warnings", [])
+            if str(item).strip()
+        ],
+        "Claims were manually reviewed before verification.",
+    ]
+
+    return {
+        "mode": "manual_review",
+        "source_mode": existing.get("mode"),
+        "provider": existing.get("provider"),
+        "provider_label": existing.get("provider_label"),
+        "model": existing.get("model"),
+        "warnings": list(dict.fromkeys(warnings)),
+        "error": existing.get("error"),
+        "claim_count": claim_count,
+    }
+
+
+def _claim_extraction_requires_review(payload: dict | None) -> bool:
+    return str((payload or {}).get("mode", "")).strip().lower() == "heuristic"
+
+
 def _apply_payload_to_report(report: dict, payload: dict) -> dict:
     updated = dict(report)
     payload_type = payload.get("type")
 
     if payload_type == "scraping_done":
         updated["pipeline_stage"] = "detecting"
+        updated["source_capture"] = payload.get("data", {}).get(
+            "source_capture",
+            updated.get("source_capture"),
+        )
+    elif payload_type == "source_text_ready":
+        updated["source_text"] = payload.get("data", {}).get("source_text", "")
+        updated["source_text_truncated"] = bool(
+            payload.get("data", {}).get("source_text_truncated", False)
+        )
     elif payload_type == "media_detection_start":
         updated["pipeline_stage"] = "media_detecting"
     elif payload_type == "media_detection_result":
@@ -101,6 +260,10 @@ def _apply_payload_to_report(report: dict, payload: dict) -> dict:
         updated["pipeline_stage"] = "extracting"
     elif payload_type == "extracting_done":
         updated["claims"] = payload.get("data", {}).get("claims", [])
+        updated["claim_extraction"] = payload.get("data", {}).get(
+            "claim_extraction",
+            updated.get("claim_extraction"),
+        )
     elif payload_type == "retrieving_start":
         updated["pipeline_stage"] = "retrieving"
         updated["progress"] = {"done": 0, "total": payload.get("data", {}).get("total", 0)}
@@ -155,6 +318,70 @@ async def _run_with_limit(items: list[dict], worker, limit: int = 3):
     tasks = [asyncio.create_task(_wrapped(item)) for item in items]
     for task in asyncio.as_completed(tasks):
         yield await task
+
+
+async def _verify_claim_with_context(claim: dict, evidence: dict, claims: list[dict]) -> dict:
+    try:
+        return await verify_claim(claim, evidence, session_claims=claims)
+    except TypeError as exc:
+        if "session_claims" not in str(exc):
+            raise
+        return await verify_claim(claim, evidence)
+
+
+async def _stream_retrieval_and_verification(claims: list[dict], _emit):
+    total_claims = len(claims)
+    retrieved_evidence: list[tuple[dict, dict]] = []
+    completed_retrievals = 0
+    completed_verifications = 0
+
+    yield _emit({"type": "retrieving_start", "data": {"total": total_claims}})
+
+    async def _retrieve_single_claim(claim: dict):
+        return await retrieve_evidence(claim)
+
+    async for claim, evidence in _run_with_limit(claims, _retrieve_single_claim, limit=5):
+        completed_retrievals += 1
+        retrieved_evidence.append((claim, evidence))
+        yield _emit(
+            {
+                "type": "retrieving_progress",
+                "data": {
+                    "claim_id": claim.get("id"),
+                    "done": completed_retrievals,
+                    "total": total_claims,
+                },
+            }
+        )
+
+    yield _emit({"type": "verifying_start", "data": {"total": total_claims}})
+
+    async def _verify_single_claim(item: tuple[dict, dict]):
+        nonlocal completed_verifications
+        claim, evidence = item
+        result = await _verify_claim_with_context(claim, evidence, claims)
+        completed_verifications += 1
+        return result
+
+    async for _item, result in _run_with_limit(retrieved_evidence, _verify_single_claim, limit=5):
+        yield _emit(
+            {
+                "type": "verifying_progress",
+                "data": result,
+            }
+        )
+        yield _emit(
+            {
+                "type": "verifying_status",
+                "data": {
+                    "done": completed_verifications,
+                    "total": total_claims,
+                },
+            }
+        )
+
+    yield _emit({"type": "reflecting_start"})
+    await asyncio.sleep(0.5) 
 
 
 @app.middleware("http")
@@ -269,6 +496,68 @@ async def update_report(
     return _serialize_report_for_viewer(report, request.state.session_id)
 
 
+@app.post("/reports/{report_id}/claims/{claim_id}/recalculate")
+async def recalculate_report_claim(
+    report_id: str,
+    claim_id: str,
+    request: Request,
+    payload: ClaimOverrideRequest,
+) -> dict:
+    report = get_report(
+        report_id,
+        owner_session_id=request.state.session_id,
+        allow_legacy_public_reports=False,
+    )
+    if report is None:
+        raise HTTPException(status_code=404, detail="Report not found.")
+
+    claim = next(
+        (item for item in report.get("claims", []) if str(item.get("id", "")).strip() == str(claim_id).strip()),
+        None,
+    )
+    if claim is None:
+        raise HTTPException(status_code=404, detail="Claim not found.")
+
+    current_result = next(
+        (
+            item
+            for item in report.get("results", [])
+            if str(item.get("claim_id", "")).strip() == str(claim_id).strip()
+        ),
+        None,
+    )
+    if current_result is None:
+        raise HTTPException(status_code=404, detail="Verified result not found for this claim.")
+
+    overrides: dict[str, str] = {}
+    for item in payload.overrides:
+        if item.source_id and item.source_id.strip():
+            overrides[item.source_id.strip()] = item.stance
+        if item.source_url and item.source_url.strip():
+            overrides[item.source_url.strip()] = item.stance
+
+    try:
+        updated_result = recalculate_claim_result(claim, current_result, overrides=overrides)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    report["results"] = _sort_results(
+        [
+            *[
+                item
+                for item in report.get("results", [])
+                if str(item.get("claim_id", "")).strip() != str(claim_id).strip()
+            ],
+            updated_result,
+        ]
+    )
+    report["status"] = "done"
+    report["pipeline_stage"] = "done"
+    report["error"] = None
+    saved_report = save_report(report)
+    return _serialize_report_for_viewer(saved_report, request.state.session_id)
+
+
 @app.delete("/reports/{report_id}")
 async def remove_report(report_id: str, request: Request) -> dict:
     deleted = delete_report(
@@ -329,14 +618,255 @@ async def export_report_pdf(
     )
 
 
+@app.post("/draft-claims")
+async def draft_claims(payload: AnalyzeRequest) -> dict:
+    url_stripped = payload.url.strip() if payload.url else ""
+    text_stripped = (payload.text or "").strip()
+    
+    is_youtube = bool(url_stripped and extract_video_id(url_stripped))
+    input_mode = "youtube" if is_youtube else ("url" if url_stripped else "text")
+    input_value = url_stripped if input_mode in ("url", "youtube") else text_stripped
+
+    scrape_result = {}
+    media_result = None
+
+    if input_mode == "youtube":
+        try:
+            text = get_youtube_transcript(url_stripped)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+    elif input_mode == "url":
+        try:
+            scrape_result = await scrape_url(url_stripped)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        text = scrape_result.get("text", "")
+        media_urls = scrape_result.get("media", [])
+        media_result = await detect_media(media_urls) if media_urls else None
+    else:
+        text = text_stripped
+
+    ai_result = await detect_ai(text) if text else None
+    extraction = await extract_claims_with_metadata(text)
+    source_text_payload = _prepare_source_text_payload(text)
+
+    return {
+        "input_mode": input_mode,
+        "input_value": input_value,
+        "source_text": source_text_payload["source_text"],
+        "source_text_truncated": source_text_payload["source_text_truncated"],
+        "source_capture": scrape_result.get("source_capture") if input_mode == "url" else None,
+        "claims": extraction["claims"],
+        "claim_extraction": extraction["meta"],
+        "review_required": _claim_extraction_requires_review(extraction["meta"]),
+        "ai_detection": ai_result,
+        "media_detection": media_result,
+    }
+
+
 @app.post("/analyze")
 async def analyze(request: Request, payload: AnalyzeRequest) -> StreamingResponse:
     async def event_stream():
-        input_mode = "url" if payload.url and payload.url.strip() else "text"
-        input_value = payload.url.strip() if input_mode == "url" else (payload.text or "").strip()
+        url_stripped = payload.url.strip() if payload.url else ""
+        text_stripped = (payload.text or "").strip()
+        
+        is_youtube = bool(url_stripped and extract_video_id(url_stripped))
+        input_mode = "youtube" if is_youtube else ("url" if url_stripped else "text")
+        input_value = url_stripped if input_mode in ("url", "youtube") else text_stripped
+        
+        report = None
+        buffered_payloads: list[dict] = []
+        scrape_result = {}
+        media_urls = []
+        media_result = None
+
+        def _emit(payload: dict) -> str:
+            nonlocal report
+            if report is None:
+                buffered_payloads.append(payload)
+                return _sse(payload)
+            report = _apply_payload_to_report(report, payload)
+            report = save_report(report)
+            return _sse(payload)
+
+        def _start_report() -> dict:
+            nonlocal report
+            report = build_report_record(
+                input_mode=input_mode,
+                input_value=input_value,
+                owner_session_id=request.state.session_id,
+            )
+            for buffered_payload in buffered_payloads:
+                report = _apply_payload_to_report(report, buffered_payload)
+            report = save_report(report)
+            buffered_payloads.clear()
+            return report
+
+        try:
+            if input_mode == "youtube":
+                text = get_youtube_transcript(url_stripped)
+                yield _emit({"type": "source_text_ready", "data": _prepare_source_text_payload(text)})
+                yield _emit(
+                    {
+                        "type": "scraping_done",
+                        "data": {
+                            "chars": len(text),
+                            "media_count": 0,
+                            "source_capture": None,
+                        },
+                    }
+                )
+            elif input_mode == "url":
+                scrape_result = await scrape_url(url_stripped)
+                text = scrape_result["text"]
+                media_urls = scrape_result.get("media", [])
+                yield _emit({"type": "source_text_ready", "data": _prepare_source_text_payload(text)})
+                yield _emit(
+                    {
+                        "type": "scraping_done",
+                        "data": {
+                            "chars": len(text),
+                            "media_count": len(media_urls),
+                            "source_capture": scrape_result.get("source_capture"),
+                        },
+                    }
+                )
+                
+                if media_urls:
+                    yield _emit({"type": "media_detection_start", "data": {"media_count": len(media_urls)}})
+                    media_result = await detect_media(media_urls)
+                    yield _emit({"type": "media_detection_result", "data": media_result})
+            else:
+                text = text_stripped
+                yield _emit({"type": "source_text_ready", "data": _prepare_source_text_payload(text)})
+
+            # RUN ENTIRE METADATA PIPELINE IN PARALLEL
+            async def _run_metadata_and_extraction():
+                # We need to extract claims, but also run detectors. 
+                # We can run ai_detection and claim_extraction in parallel.
+                # If it's a URL, we also run media_detection.
+                tasks = [
+                    extract_claims_with_metadata(text),
+                    detect_ai(text)
+                ]
+                if input_mode == "url" and media_urls:
+                    tasks.append(detect_media(media_urls))
+                
+                results = await asyncio.gather(*tasks)
+                return results
+
+            metadata_results = await _run_metadata_and_extraction()
+            extraction = metadata_results[0]
+            ai_result = metadata_results[1]
+            media_result = metadata_results[2] if len(metadata_results) > 2 else None
+
+            claims = extraction["claims"]
+            if input_mode == "url":
+                claims = _attach_url_context_to_claims(
+                    claims,
+                    source_url=url_stripped,
+                    source_text=text,
+                    source_capture=scrape_result.get("source_capture"),
+                )
+
+            # Emit all results at once
+            yield _emit({"type": "ai_detection_result", "data": ai_result})
+            if media_result:
+                yield _emit({"type": "media_detection_result", "data": media_result})
+            
+            yield _emit(
+                {
+                    "type": "extracting_done",
+                    "data": {
+                        "claims": claims,
+                        "count": len(claims),
+                        "claim_extraction": extraction["meta"],
+                    },
+                }
+            )
+
+            if _claim_extraction_requires_review(extraction["meta"]):
+                source_text_payload = _prepare_source_text_payload(text)
+                yield _sse(
+                    {
+                        "type": "review_required",
+                        "message": (
+                            "Automatic verification paused because FactLens had to use a heuristic claim draft. "
+                            "Review and confirm the claims before verification."
+                        ),
+                        "data": {
+                            "input_mode": input_mode,
+                            "input_value": input_value,
+                            "source_text": source_text_payload["source_text"],
+                            "source_text_truncated": source_text_payload["source_text_truncated"],
+                            "source_capture": scrape_result.get("source_capture") if payload.url else None,
+                            "claims": claims,
+                            "claim_extraction": extraction["meta"],
+                            "review_required": True,
+                            "ai_detection": ai_result,
+                            "media_detection": media_result if payload.url and media_urls else None,
+                        },
+                    }
+                )
+                return
+
+            report = _start_report()
+            yield _sse({"type": "report_created", "data": {"report_id": report["id"]}})
+
+            if not claims and extraction["meta"].get("error"):
+                raise ValueError(extraction["meta"]["error"])
+
+            async for chunk in _stream_retrieval_and_verification(claims, _emit):
+                yield chunk
+
+            yield _emit(
+                {
+                    "type": "done",
+                    "data": {"report_id": report["id"], "completed_at": _utc_now()},
+                }
+            )
+        except Exception as exc:
+            if report is None:
+                yield _sse(
+                    {
+                        "type": "error",
+                        "message": str(exc),
+                        "data": {"completed_at": _utc_now()},
+                    }
+                )
+                return
+            yield _emit(
+                {
+                    "type": "error",
+                    "message": str(exc),
+                    "data": {"report_id": report["id"], "completed_at": _utc_now()},
+                }
+            )
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
+@app.post("/analyze-reviewed")
+async def analyze_reviewed(
+    request: Request,
+    payload: AnalyzeReviewedRequest,
+) -> StreamingResponse:
+    normalized_claims = _normalize_review_claims(payload.claims)
+    if payload.input_mode == "url":
+        normalized_claims = _attach_url_context_to_claims(
+            normalized_claims,
+            source_url=(payload.input_value or "").strip(),
+            source_text=payload.source_text,
+            source_capture=payload.source_capture,
+        )
+    if not normalized_claims:
+        raise HTTPException(status_code=422, detail="At least one reviewed claim is required.")
+
+    async def event_stream():
+        input_value = (payload.input_value or "").strip() or payload.source_text.strip()
         report = save_report(
             build_report_record(
-                input_mode=input_mode,
+                input_mode=payload.input_mode,
                 input_value=input_value,
                 owner_session_id=request.state.session_id,
             )
@@ -350,68 +880,47 @@ async def analyze(request: Request, payload: AnalyzeRequest) -> StreamingRespons
 
         try:
             yield _sse({"type": "report_created", "data": {"report_id": report["id"]}})
+            yield _emit(
+                {
+                    "type": "source_text_ready",
+                    "data": _prepare_source_text_payload(payload.source_text),
+                }
+            )
+            if payload.input_mode == "url" and payload.source_capture is not None:
+                yield _emit(
+                    {
+                        "type": "scraping_done",
+                        "data": {
+                            "chars": len(payload.source_text),
+                            "media_count": int(payload.source_capture.get("media_count", 0) or 0),
+                            "source_capture": payload.source_capture,
+                        },
+                    }
+                )
 
-            if payload.url:
-                scrape_result = await scrape_url(payload.url.strip())
-                text = scrape_result["text"]
-                media_urls = scrape_result.get("media", [])
-                yield _emit({"type": "scraping_done", "data": {"chars": len(text), "media_count": len(media_urls)}})
-                
-                if media_urls:
-                    yield _emit({"type": "media_detection_start", "data": {"media_count": len(media_urls)}})
-                    media_result = await detect_media(media_urls)
-                    yield _emit({"type": "media_detection_result", "data": media_result})
-            else:
-                text = (payload.text or "").strip()
-
-            yield _emit({"type": "ai_detection_start"})
-            ai_result = await detect_ai(text)
-            yield _emit({"type": "ai_detection_result", "data": ai_result})
+            if payload.media_detection is not None:
+                yield _emit({"type": "media_detection_result", "data": payload.media_detection})
+            if payload.ai_detection is not None:
+                yield _emit({"type": "ai_detection_result", "data": payload.ai_detection})
 
             yield _emit({"type": "extracting_start"})
-            claims = await extract_claims(text)
+            claim_extraction = _manual_review_claim_extraction(
+                payload.claim_extraction,
+                len(normalized_claims),
+            )
             yield _emit(
                 {
                     "type": "extracting_done",
-                    "data": {"claims": claims, "count": len(claims)},
+                    "data": {
+                        "claims": normalized_claims,
+                        "count": len(normalized_claims),
+                        "claim_extraction": claim_extraction,
+                    },
                 }
             )
 
-            yield _emit({"type": "retrieving_start", "data": {"total": len(claims)}})
-            evidence_map: dict[str, dict] = {}
-            completed_retrievals = 0
-            async for claim, evidence in _run_with_limit(claims, retrieve_evidence):
-                evidence_map[claim["id"]] = evidence
-                completed_retrievals += 1
-                yield _emit(
-                    {
-                        "type": "retrieving_progress",
-                        "data": {
-                            "claim_id": claim["id"],
-                            "done": completed_retrievals,
-                            "total": len(claims),
-                        },
-                    }
-                )
-
-            yield _emit({"type": "verifying_start", "data": {"total": len(claims)}})
-            completed_verifications = 0
-
-            async def _verify_with_evidence(claim: dict) -> dict:
-                return await verify_claim(claim, evidence_map[claim["id"]])
-
-            async for _claim, result in _run_with_limit(claims, _verify_with_evidence):
-                completed_verifications += 1
-                yield _emit({"type": "verifying_progress", "data": result})
-                yield _emit(
-                    {
-                        "type": "verifying_status",
-                        "data": {
-                            "done": completed_verifications,
-                            "total": len(claims),
-                        },
-                    }
-                )
+            async for chunk in _stream_retrieval_and_verification(normalized_claims, _emit):
+                yield chunk
 
             yield _emit(
                 {

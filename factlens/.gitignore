@@ -6,9 +6,10 @@ backend/**/*.pyc
 # Node
 frontend/node_modules/
 frontend/dist/
+frontend/playwright-report/
+frontend/playwright-results/
 
 # Environment and local logs
 backend/.env
 frontend/.env
 *.log
-

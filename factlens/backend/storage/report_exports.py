@@ -4,6 +4,7 @@ from collections import Counter
 from datetime import datetime, timezone
 import textwrap
 
+from storage.report_diagnostics import build_report_diagnostics
 
 PAGE_WIDTH = 612
 PAGE_HEIGHT = 792
@@ -21,9 +22,12 @@ AI_LABELS = {
 }
 
 MEDIA_LABELS = {
-    "LIKELY_AI": "Likely AI-generated image",
-    "POSSIBLY_AI": "Possibly AI-generated image",
-    "LIKELY_HUMAN": "Likely authentic photograph",
+    "LIKELY_SYNTHETIC": "Likely synthetic-media signal",
+    "POSSIBLY_SYNTHETIC": "Possible synthetic-media signal",
+    "NO_STRONG_SIGNAL": "No strong synthetic-media signal",
+    "LIKELY_AI": "Likely synthetic-media signal",
+    "POSSIBLY_AI": "Possible synthetic-media signal",
+    "LIKELY_HUMAN": "No strong synthetic-media signal",
     "UNKNOWN": "Visual authenticity unavailable",
 }
 
@@ -42,6 +46,7 @@ def build_report_pdf(report: dict) -> bytes:
 
 
 def _build_report_lines(report: dict) -> list[str]:
+    evaluation = report.get("evaluation") or build_report_diagnostics(report)
     claims = report.get("claims", [])
     results = report.get("results", [])
     verdict_counts = Counter(result.get("verdict", "UNVERIFIABLE") for result in results)
@@ -74,6 +79,40 @@ def _build_report_lines(report: dict) -> list[str]:
             for key in ("TRUE", "FALSE", "PARTIALLY_TRUE", "UNVERIFIABLE")
         )
     )
+
+    _add_heading(lines, "Run diagnostics")
+    _add_wrapped_line(
+        lines,
+        "Extraction: ",
+        (
+            f"mode {_title_case(str(evaluation.get('extraction', {}).get('mode', 'unknown')).replace('_', ' '))}; "
+            f"warnings {evaluation.get('extraction', {}).get('warning_count', 0)}; "
+            f"compound claims {evaluation.get('extraction', {}).get('compound_claim_count', 0)}; "
+            f"atomic claim rate {round(float(evaluation.get('extraction', {}).get('atomic_claim_rate', 0.0) or 0.0) * 100)}%"
+        ),
+    )
+    _add_wrapped_line(
+        lines,
+        "Retrieval: ",
+        (
+            f"recovery on {evaluation.get('retrieval', {}).get('recovery_triggered_claim_count', 0)} claim(s); "
+            f"avg queries {evaluation.get('retrieval', {}).get('avg_query_attempt_count', 0)}; "
+            f"provider instability on {evaluation.get('retrieval', {}).get('provider_instability_claim_count', 0)} claim(s)"
+        ),
+    )
+    top_contradiction = (evaluation.get("verification", {}) or {}).get("top_contradiction_type") or {}
+    _add_wrapped_line(
+        lines,
+        "Verification: ",
+        (
+            f"average confidence {round(float(evaluation.get('summary', {}).get('average_confidence', 0.0) or 0.0) * 100)}%; "
+            f"conservative verdict rate {round(float(evaluation.get('summary', {}).get('conservative_claim_rate', 0.0) or 0.0) * 100)}%; "
+            f"top contradiction {top_contradiction.get('label', 'none')}"
+        ),
+    )
+    quality_flags = [str(item).strip() for item in evaluation.get("quality_flags", []) if str(item).strip()]
+    if quality_flags:
+        _add_wrapped_line(lines, "Quality flags: ", "; ".join(quality_flags))
 
     _add_heading(lines, "Authenticity signals")
     _add_detection_lines(lines, "Submitted text", report.get("ai_detection"), AI_LABELS)
@@ -129,6 +168,32 @@ def _build_report_lines(report: dict) -> list[str]:
             f"{retrieval_summary.get('distinct_domain_count', 0)} domains; "
             f"freshest evidence {retrieval_summary.get('freshest_date') or 'unknown'}"
         )
+        contradiction_types = result.get("conflict_summary", {}).get("contradiction_types") or []
+        if contradiction_types:
+            _add_wrapped_line(
+                lines,
+                "Contradiction types: ",
+                "; ".join(str(item.get("label") or "Unknown disagreement") for item in contradiction_types),
+            )
+        temporal_context = result.get("temporal_context") or {}
+        if temporal_context.get("summary"):
+            _add_wrapped_line(lines, "Temporal context: ", str(temporal_context["summary"]))
+        subclaim_results = result.get("subclaim_results") or []
+        subclaim_summary = result.get("subclaim_summary") or {}
+        if subclaim_results:
+            _add_wrapped_line(
+                lines,
+                "Subclaim synthesis: ",
+                str(subclaim_summary.get("synthesis_note") or f"{len(subclaim_results)} subclaims reviewed."),
+            )
+            for subclaim_index, subclaim in enumerate(subclaim_results[:3], start=1):
+                verdict = VERDICT_LABELS.get(subclaim.get("verdict"), _title_case(subclaim.get("verdict", "unknown")))
+                confidence_label = round(float(subclaim.get("confidence", 0.0) or 0.0) * 100)
+                _add_wrapped_line(
+                    lines,
+                    f"Subclaim {subclaim_index}: ",
+                    f"{verdict} ({confidence_label}% confidence) | {subclaim.get('claim') or 'No subclaim text available.'}",
+                )
 
         top_sources = (result.get("evidence_used") or [])[:2]
         if top_sources:
@@ -142,6 +207,17 @@ def _build_report_lines(report: dict) -> list[str]:
                 _add_wrapped_line(lines, f"Top source {source_index}: ", " | ".join(source_parts))
                 if source.get("url"):
                     _add_wrapped_line(lines, "Source URL: ", str(source["url"]))
+
+        evidence_provenance = result.get("evidence_provenance") or []
+        for proof_index, proof in enumerate(evidence_provenance[:2], start=1):
+            snapshot_bits = [str(proof.get("snapshot_id") or "snapshot unavailable")]
+            if proof.get("captured_at"):
+                snapshot_bits.append(str(proof["captured_at"]))
+            if proof.get("content_hash"):
+                snapshot_bits.append(f"hash {proof['content_hash']}")
+            _add_wrapped_line(lines, f"Snapshot proof {proof_index}: ", " | ".join(snapshot_bits))
+            if proof.get("primary_quote"):
+                _add_wrapped_line(lines, "Grounded quote: ", str(proof["primary_quote"]))
 
         lines.append("")
 
@@ -177,9 +253,24 @@ def _add_detection_lines(
     if detection.get("explanation"):
         _add_wrapped_line(lines, "Summary: ", str(detection["explanation"]))
 
+    if detection.get("analysis_mode"):
+        _add_wrapped_line(
+            lines,
+            "Method: ",
+            _title_case(str(detection.get("analysis_mode", "unknown")).replace("_", " ")),
+        )
+
     signals = [str(signal) for signal in detection.get("signals_found") or [] if str(signal).strip()]
     if signals:
         _add_wrapped_line(lines, "Signals: ", "; ".join(signals))
+
+    warnings = [str(item) for item in detection.get("warnings") or [] if str(item).strip()]
+    if warnings:
+        _add_wrapped_line(lines, "Warnings: ", "; ".join(warnings))
+
+    limitations = [str(item) for item in detection.get("limitations") or [] if str(item).strip()]
+    if limitations:
+        _add_wrapped_line(lines, "Limitations: ", "; ".join(limitations))
 
     if detection.get("media_url"):
         _add_wrapped_line(lines, "Media URL: ", str(detection["media_url"]))

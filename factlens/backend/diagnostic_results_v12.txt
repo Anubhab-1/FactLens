@@ -1,0 +1,321 @@
+=== FACTLENS PIPELINE DIAGNOSTICS ===
+
+--- Running Test: Simple False Claim (Lyon) ---
+Input Text: The capital of France is Lyon.
+Extracting claims...
+Extracted 1 claims:
+  - [entity] The capital of France is Lyon
+
+Processing Claim: The capital of France is Lyon
+Retrieving evidence...
+Retrieved 3 sources.
+Verifying claim...
+VERDICT: PARTIALLY_TRUE
+CONFIDENCE: 0.47
+REASONING: The evidence is mixed: some sources support important parts of the claim while others contradict or qualify it, so the result is only partially reliable.
+--- DEBUG RESULT (EXCL EVIDENCE) ---
+{
+  "claim_id": "1",
+  "claim": "The capital of France is Lyon",
+  "claim_type": "entity",
+  "time_sensitive": false,
+  "claim_requires_recency": false,
+  "verdict": "PARTIALLY_TRUE",
+  "confidence": 0.47,
+  "reasoning": "The evidence is mixed: some sources support important parts of the claim while others contradict or qualify it, so the result is only partially reliable.",
+  "reasoning_steps": [],
+  "self_reflection": "",
+  "supporting_sources": [
+    "https://www.mappr.co/capital-cities/france/"
+  ],
+  "conflicting_sources": [
+    "https://www.britannica.com/place/France"
+  ],
+  "conflict_detected": true,
+  "conflict_summary": {
+    "summary": "Supporting and conflicting sources disagree mainly because of date drift, entity mismatch. Supporting evidence is newest on 2024-03-13, while conflicting evidence is newest on 2026-03-23. The conflicting side has the higher average authority score.",
+    "drivers": [
+      "temporal drift",
+      "authority imbalance",
+      "entity mismatch"
+    ],
+    "contradiction_types": [
+      {
+        "id": "date_drift",
+        "label": "Date drift",
+        "summary": "The evidence clusters around materially different dates or time windows."
+      },
+      {
+        "id": "entity_mismatch",
+        "label": "Entity mismatch",
+        "summary": "The disagreement centers on a different person, place, organization, or named entity."
+      }
+    ],
+    "primary_contradiction_type": "date_drift",
+    "supporting_count": 1,
+    "conflicting_count": 1,
+    "mixed_count": 0,
+    "supporting_newest": "2024-03-13",
+    "conflicting_newest": "2026-03-23",
+    "supporting_avg_authority": 0.48,
+    "conflicting_avg_authority": 0.86
+  },
+  "confidence_breakdown": {
+    "evidence_coverage": 0.5,
+    "source_quality": 0.6,
+    "freshness": 0.98,
+    "clarity": 0.33,
+    "support_score": 0.37,
+    "conflict_score": 0.71,
+    "independent_sources": 2,
+    "cross_check_agreement": 0.33
+  },
+  "risk_flags": [
+    "LLM and heuristic source assessment disagreed on 2 of 3 compared sources.",
+    "Heuristic cross-check resolved this claim as UNVERIFIABLE, so FactLens lowered confidence in the primary verdict.",
+    "Reflection Auditor suggested FALSE, but FactLens kept the calibrated verdict because the direct evidence was not strong enough."
+  ],
+  "query_variants": [
+    {
+      "query": "capital of France",
+      "objective": "direct",
+      "phase": "primary",
+      "planner": "llm",
+      "provider_attempts": [
+        {
+          "provider": "tavily",
+          "status": "error",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": false,
+          "error": "Exception('Error 432: ')"
+        },
+        {
+          "provider": "wikipedia",
+          "status": "ok",
+          "result_count": 3,
+          "added_source_count": 1,
+          "fallback_used": true
+        }
+      ],
+      "status": "ok",
+      "result_count": 3,
+      "provider": "wikipedia",
+      "fallback_used": true,
+      "added_source_count": 1,
+      "warning": "Exception('Error 432: ')"
+    },
+    {
+      "query": "official capital of France government website",
+      "objective": "authoritative",
+      "phase": "primary",
+      "planner": "llm",
+      "provider_attempts": [
+        {
+          "provider": "tavily",
+          "status": "error",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": false,
+          "error": "Exception('Error 432: ')"
+        },
+        {
+          "provider": "wikipedia",
+          "status": "ok",
+          "result_count": 3,
+          "added_source_count": 0,
+          "fallback_used": true
+        },
+        {
+          "provider": "duckduckgo_html",
+          "status": "empty",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": true,
+          "warning": "duckduckgo_html returned no results."
+        },
+        {
+          "provider": "bing_html",
+          "status": "ok",
+          "result_count": 3,
+          "added_source_count": 0,
+          "fallback_used": true
+        }
+      ],
+      "status": "ok",
+      "result_count": 3,
+      "provider": "wikipedia",
+      "fallback_used": true,
+      "added_source_count": 0,
+      "warning": "Exception('Error 432: '); duckduckgo_html returned no results."
+    },
+    {
+      "query": "what is the capital of France",
+      "objective": "recency",
+      "phase": "primary",
+      "planner": "llm",
+      "provider_attempts": [
+        {
+          "provider": "tavily",
+          "status": "error",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": false,
+          "error": "Exception('Error 432: ')"
+        },
+        {
+          "provider": "wikipedia",
+          "status": "ok",
+          "result_count": 3,
+          "added_source_count": 0,
+          "fallback_used": true
+        },
+        {
+          "provider": "duckduckgo_html",
+          "status": "empty",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": true,
+          "warning": "duckduckgo_html returned no results."
+        },
+        {
+          "provider": "bing_html",
+          "status": "ok",
+          "result_count": 3,
+          "added_source_count": 2,
+          "fallback_used": true
+        }
+      ],
+      "status": "ok",
+      "result_count": 3,
+      "provider": "bing_html",
+      "fallback_used": true,
+      "added_source_count": 2,
+      "warning": "Exception('Error 432: '); duckduckgo_html returned no results."
+    },
+    {
+      "query": "is Lyon the capital of France debunked",
+      "objective": "contradiction",
+      "phase": "primary",
+      "planner": "llm",
+      "provider_attempts": [
+        {
+          "provider": "tavily",
+          "status": "error",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": false,
+          "error": "Exception('Error 432: ')"
+        },
+        {
+          "provider": "wikipedia",
+          "status": "ok",
+          "result_count": 3,
+          "added_source_count": 0,
+          "fallback_used": true
+        },
+        {
+          "provider": "duckduckgo_html",
+          "status": "empty",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": true,
+          "warning": "duckduckgo_html returned no results."
+        },
+        {
+          "provider": "bing_html",
+          "status": "error",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": true,
+          "warning": "bing_html request timed out",
+          "error": "Timeout"
+        }
+      ],
+      "status": "ok",
+      "result_count": 3,
+      "provider": "wikipedia",
+      "fallback_used": true,
+      "added_source_count": 0,
+      "warning": "Exception('Error 432: '); duckduckgo_html returned no results.; Timeout"
+    }
+  ],
+  "retrieval_summary": {
+    "source_count": 3,
+    "authoritative_count": 1,
+    "recent_count": 2,
+    "dated_count": 3,
+    "distinct_domain_count": 3,
+    "independent_source_count": 3,
+    "official_source_count": 0,
+    "first_party_count": 0,
+    "primary_source_count": 2,
+    "source_origin_breakdown": {
+      "reference": 2,
+      "web": 1
+    },
+    "freshest_date": "2026-03-23",
+    "domains": [
+      "britannica.com",
+      "en.wikipedia.org",
+      "mappr.co"
+    ],
+    "query_attempt_count": 4,
+    "failed_query_count": 0,
+    "recovery_triggered": false,
+    "recovery_query_count": 0,
+    "recovery_reason": [],
+    "recovery_strategy": "not_needed",
+    "recovery_planner_notes": "",
+    "recovery_fallback_used": false
+  },
+  "temporal_context": {
+    "status": "dated_but_not_required",
+    "requires_recency": false,
+    "dated_source_count": 2,
+    "freshest_date": "2026-03-23",
+    "oldest_date": "2024-03-13",
+    "summary": "Dated evidence was available through 2026-03-23, although this claim is not strongly time-sensitive."
+  },
+  "base_source_assessments": [
+    {
+      "source_id": "S1",
+      "url": "https://www.britannica.com/place/France",
+      "stance": "CONFLICT",
+      "strength": 0.9533333333333333,
+      "summary": "Source S1 explicitly states that the capital of France is Paris, not Lyon.",
+      "snippet_used": "The capital and by far the most important city of France is Paris, one of the world\u2019s preeminent cultural and commercial centres."
+    },
+    {
+      "source_id": "S2",
+      "url": "https://en.wikipedia.org/wiki/Capital_punishment_in_France",
+      "stance": "IRRELEVANT",
+      "strength": 0.0,
+      "summary": "Source S2 does not provide relevant information about the capital of France.",
+      "snippet_used": ""
+    },
+    {
+      "source_id": "S3",
+      "url": "https://www.mappr.co/capital-cities/france/",
+      "stance": "SUPPORT",
+      "strength": 0.66,
+      "summary": "The grounded passage very strongly overlaps the claim.",
+      "snippet_used": "The rest of France lies to the south, including major cities like Lyon and Marseille and, further on, the Mediterranean Sea ."
+    }
+  ],
+  "manual_override": null,
+  "subclaim_results": [],
+  "subclaim_summary": {
+    "count": 0,
+    "mixed_support": false,
+    "verdict_breakdown": {},
+    "synthesis_note": ""
+  }
+}
+RISK FLAGS:
+  ! LLM and heuristic source assessment disagreed on 2 of 3 compared sources.
+  ! Heuristic cross-check resolved this claim as UNVERIFIABLE, so FactLens lowered confidence in the primary verdict.
+  ! Reflection Auditor suggested FALSE, but FactLens kept the calibrated verdict because the direct evidence was not strong enough.
+
+========================================
+

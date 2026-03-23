@@ -1,0 +1,560 @@
+=== FACTLENS PIPELINE DIAGNOSTICS ===
+
+--- Running Test: Simple False Claim (Lyon) ---
+Input Text: The capital of France is Lyon.
+Extracting claims...
+Extracted 1 claims:
+  - [entity] The capital of France is Lyon.
+
+Processing Claim: The capital of France is Lyon.
+Retrieving evidence...
+Retrieved 2 sources.
+Verifying claim...
+VERDICT: UNVERIFIABLE
+CONFIDENCE: 0.28
+REASONING: The retrieved sources were too weak, too sparse, or too conflicting to justify a firmer verdict.
+--- DEBUG RESULT (EXCL EVIDENCE) ---
+{
+  "claim_id": "1",
+  "claim": "The capital of France is Lyon.",
+  "claim_type": "entity",
+  "time_sensitive": false,
+  "claim_requires_recency": false,
+  "verdict": "UNVERIFIABLE",
+  "confidence": 0.28,
+  "reasoning": "The retrieved sources were too weak, too sparse, or too conflicting to justify a firmer verdict.",
+  "reasoning_steps": [],
+  "self_reflection": "",
+  "supporting_sources": [],
+  "conflicting_sources": [
+    "https://en.wikipedia.org/wiki/Lyon"
+  ],
+  "conflict_detected": false,
+  "conflict_summary": {
+    "summary": "",
+    "drivers": [],
+    "contradiction_types": [],
+    "primary_contradiction_type": "",
+    "supporting_count": 0,
+    "conflicting_count": 1,
+    "mixed_count": 0,
+    "supporting_newest": "unknown",
+    "conflicting_newest": "unknown",
+    "supporting_avg_authority": 0.0,
+    "conflicting_avg_authority": 0.0
+  },
+  "confidence_breakdown": {
+    "evidence_coverage": 0.25,
+    "source_quality": 0.65,
+    "freshness": 0.9,
+    "clarity": 0.41,
+    "support_score": 0.0,
+    "conflict_score": 0.41,
+    "independent_sources": 1,
+    "cross_check_agreement": 0.5
+  },
+  "risk_flags": [
+    "The verdict relies on sparse evidence coverage.",
+    "LLM and heuristic source assessment disagreed on 1 of 2 compared sources.",
+    "Reflection Auditor suggested FALSE, but FactLens kept the calibrated verdict because the direct evidence was not strong enough."
+  ],
+  "query_variants": [
+    {
+      "query": "capital of France",
+      "objective": "direct",
+      "phase": "primary",
+      "planner": "llm",
+      "provider_attempts": [
+        {
+          "provider": "tavily",
+          "status": "error",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": false,
+          "error": "Exception('Error 432: ')"
+        },
+        {
+          "provider": "wikipedia",
+          "status": "ok",
+          "result_count": 3,
+          "added_source_count": 1,
+          "fallback_used": true
+        }
+      ],
+      "status": "ok",
+      "result_count": 3,
+      "provider": "wikipedia",
+      "fallback_used": true,
+      "added_source_count": 1,
+      "warning": "Exception('Error 432: ')"
+    },
+    {
+      "query": "official capital of France government website",
+      "objective": "authoritative",
+      "phase": "primary",
+      "planner": "llm",
+      "provider_attempts": [
+        {
+          "provider": "tavily",
+          "status": "error",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": false,
+          "error": "Exception('Error 432: ')"
+        },
+        {
+          "provider": "wikipedia",
+          "status": "ok",
+          "result_count": 3,
+          "added_source_count": 0,
+          "fallback_used": true
+        },
+        {
+          "provider": "duckduckgo_html",
+          "status": "error",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": true,
+          "error": "HTTP Error 403: Forbidden"
+        },
+        {
+          "provider": "bing_html",
+          "status": "ok",
+          "result_count": 1,
+          "added_source_count": 0,
+          "fallback_used": true
+        }
+      ],
+      "status": "ok",
+      "result_count": 3,
+      "provider": "wikipedia",
+      "fallback_used": true,
+      "added_source_count": 0,
+      "warning": "Exception('Error 432: '); HTTP Error 403: Forbidden"
+    },
+    {
+      "query": "is Lyon the capital of France",
+      "objective": "recency",
+      "phase": "primary",
+      "planner": "llm",
+      "provider_attempts": [
+        {
+          "provider": "tavily",
+          "status": "error",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": false,
+          "error": "Exception('Error 432: ')"
+        },
+        {
+          "provider": "wikipedia",
+          "status": "ok",
+          "result_count": 3,
+          "added_source_count": 0,
+          "fallback_used": true
+        },
+        {
+          "provider": "duckduckgo_html",
+          "status": "error",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": true,
+          "error": "HTTP Error 403: Forbidden"
+        },
+        {
+          "provider": "bing_html",
+          "status": "error",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": true,
+          "warning": "bing_html request timed out",
+          "error": "Timeout"
+        }
+      ],
+      "status": "ok",
+      "result_count": 3,
+      "provider": "wikipedia",
+      "fallback_used": true,
+      "added_source_count": 0,
+      "warning": "Exception('Error 432: '); HTTP Error 403: Forbidden; Timeout"
+    },
+    {
+      "query": "why Lyon is not the capital of France",
+      "objective": "contradiction",
+      "phase": "primary",
+      "planner": "llm",
+      "provider_attempts": [
+        {
+          "provider": "tavily",
+          "status": "error",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": false,
+          "error": "Exception('Error 432: ')"
+        },
+        {
+          "provider": "wikipedia",
+          "status": "ok",
+          "result_count": 3,
+          "added_source_count": 1,
+          "fallback_used": true
+        }
+      ],
+      "status": "ok",
+      "result_count": 3,
+      "provider": "wikipedia",
+      "fallback_used": true,
+      "added_source_count": 1,
+      "warning": "Exception('Error 432: ')"
+    },
+    {
+      "query": "official capital of France government website .fr",
+      "objective": "authoritative",
+      "phase": "recovery",
+      "planner": "llm",
+      "provider_attempts": [
+        {
+          "provider": "tavily",
+          "status": "error",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": false,
+          "warning": "tavily circuit breaker is open due to repeated failures",
+          "error": "Circuit breaker open"
+        },
+        {
+          "provider": "wikipedia",
+          "status": "ok",
+          "result_count": 3,
+          "added_source_count": 0,
+          "fallback_used": true
+        },
+        {
+          "provider": "duckduckgo_html",
+          "status": "error",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": true,
+          "warning": "duckduckgo_html circuit breaker is open due to repeated failures",
+          "error": "Circuit breaker open"
+        },
+        {
+          "provider": "bing_html",
+          "status": "ok",
+          "result_count": 1,
+          "added_source_count": 0,
+          "fallback_used": true
+        }
+      ],
+      "status": "ok",
+      "result_count": 3,
+      "provider": "wikipedia",
+      "fallback_used": true,
+      "added_source_count": 0,
+      "warning": "Circuit breaker open"
+    },
+    {
+      "query": "capital of France BBC News",
+      "objective": "authoritative",
+      "phase": "recovery",
+      "planner": "llm",
+      "provider_attempts": [
+        {
+          "provider": "tavily",
+          "status": "error",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": false,
+          "warning": "tavily circuit breaker is open due to repeated failures",
+          "error": "Circuit breaker open"
+        },
+        {
+          "provider": "wikipedia",
+          "status": "ok",
+          "result_count": 3,
+          "added_source_count": 0,
+          "fallback_used": true
+        },
+        {
+          "provider": "duckduckgo_html",
+          "status": "error",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": true,
+          "warning": "duckduckgo_html circuit breaker is open due to repeated failures",
+          "error": "Circuit breaker open"
+        },
+        {
+          "provider": "bing_html",
+          "status": "ok",
+          "result_count": 3,
+          "added_source_count": 0,
+          "fallback_used": true
+        }
+      ],
+      "status": "ok",
+      "result_count": 3,
+      "provider": "wikipedia",
+      "fallback_used": true,
+      "added_source_count": 0,
+      "warning": "Circuit breaker open"
+    },
+    {
+      "query": "Lyon vs Paris capital of France",
+      "objective": "contradiction",
+      "phase": "recovery",
+      "planner": "llm",
+      "provider_attempts": [
+        {
+          "provider": "tavily",
+          "status": "error",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": false,
+          "warning": "tavily circuit breaker is open due to repeated failures",
+          "error": "Circuit breaker open"
+        },
+        {
+          "provider": "wikipedia",
+          "status": "ok",
+          "result_count": 3,
+          "added_source_count": 0,
+          "fallback_used": true
+        },
+        {
+          "provider": "duckduckgo_html",
+          "status": "error",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": true,
+          "warning": "duckduckgo_html circuit breaker is open due to repeated failures",
+          "error": "Circuit breaker open"
+        },
+        {
+          "provider": "bing_html",
+          "status": "ok",
+          "result_count": 2,
+          "added_source_count": 0,
+          "fallback_used": true
+        }
+      ],
+      "status": "ok",
+      "result_count": 3,
+      "provider": "wikipedia",
+      "fallback_used": true,
+      "added_source_count": 0,
+      "warning": "Circuit breaker open"
+    },
+    {
+      "query": "\"The capital of France is Lyon.\" source evidence",
+      "objective": "direct",
+      "phase": "recovery",
+      "planner": "heuristic",
+      "provider_attempts": [
+        {
+          "provider": "tavily",
+          "status": "error",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": false,
+          "warning": "tavily circuit breaker is open due to repeated failures",
+          "error": "Circuit breaker open"
+        },
+        {
+          "provider": "wikipedia",
+          "status": "empty",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": true,
+          "warning": "wikipedia returned no results."
+        },
+        {
+          "provider": "duckduckgo_html",
+          "status": "error",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": true,
+          "warning": "duckduckgo_html circuit breaker is open due to repeated failures",
+          "error": "Circuit breaker open"
+        },
+        {
+          "provider": "bing_html",
+          "status": "error",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": true,
+          "warning": "bing_html request timed out",
+          "error": "Timeout"
+        }
+      ],
+      "status": "error",
+      "result_count": 0,
+      "provider": "bing_html",
+      "fallback_used": true,
+      "added_source_count": 0,
+      "warning": "Circuit breaker open; wikipedia returned no results.; bing_html request timed out",
+      "error": "Timeout"
+    },
+    {
+      "query": "The capital of France is Lyon. official site government university organization",
+      "objective": "authoritative",
+      "phase": "recovery",
+      "planner": "heuristic",
+      "provider_attempts": [
+        {
+          "provider": "tavily",
+          "status": "error",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": false,
+          "warning": "tavily circuit breaker is open due to repeated failures",
+          "error": "Circuit breaker open"
+        },
+        {
+          "provider": "wikipedia",
+          "status": "ok",
+          "result_count": 3,
+          "added_source_count": 0,
+          "fallback_used": true
+        },
+        {
+          "provider": "duckduckgo_html",
+          "status": "error",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": true,
+          "warning": "duckduckgo_html circuit breaker is open due to repeated failures",
+          "error": "Circuit breaker open"
+        },
+        {
+          "provider": "bing_html",
+          "status": "ok",
+          "result_count": 3,
+          "added_source_count": 0,
+          "fallback_used": true
+        }
+      ],
+      "status": "ok",
+      "result_count": 3,
+      "provider": "wikipedia",
+      "fallback_used": true,
+      "added_source_count": 0,
+      "warning": "Circuit breaker open"
+    },
+    {
+      "query": "The capital of France is Lyon. contradiction fact check context",
+      "objective": "recency",
+      "phase": "recovery",
+      "planner": "heuristic",
+      "provider_attempts": [
+        {
+          "provider": "tavily",
+          "status": "error",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": false,
+          "warning": "tavily circuit breaker is open due to repeated failures",
+          "error": "Circuit breaker open"
+        },
+        {
+          "provider": "wikipedia",
+          "status": "ok",
+          "result_count": 3,
+          "added_source_count": 0,
+          "fallback_used": true
+        },
+        {
+          "provider": "duckduckgo_html",
+          "status": "error",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": true,
+          "warning": "duckduckgo_html circuit breaker is open due to repeated failures",
+          "error": "Circuit breaker open"
+        },
+        {
+          "provider": "bing_html",
+          "status": "ok",
+          "result_count": 3,
+          "added_source_count": 0,
+          "fallback_used": true
+        }
+      ],
+      "status": "ok",
+      "result_count": 3,
+      "provider": "wikipedia",
+      "fallback_used": true,
+      "added_source_count": 0,
+      "warning": "Circuit breaker open"
+    }
+  ],
+  "retrieval_summary": {
+    "source_count": 2,
+    "authoritative_count": 0,
+    "recent_count": 2,
+    "dated_count": 2,
+    "distinct_domain_count": 1,
+    "independent_source_count": 1,
+    "official_source_count": 0,
+    "first_party_count": 0,
+    "primary_source_count": 2,
+    "source_origin_breakdown": {
+      "reference": 2
+    },
+    "freshest_date": "2026-02-24",
+    "domains": [
+      "en.wikipedia.org"
+    ],
+    "query_attempt_count": 10,
+    "failed_query_count": 1,
+    "recovery_triggered": true,
+    "recovery_query_count": 6,
+    "recovery_reason": [
+      "Evidence diversity is too narrow."
+    ],
+    "recovery_strategy": "heuristic_after_llm",
+    "recovery_planner_notes": "LLM-planned recovery did not produce strong enough evidence, so deterministic recovery queries were added.",
+    "recovery_fallback_used": true
+  },
+  "temporal_context": {
+    "status": "dated_but_not_required",
+    "requires_recency": false,
+    "dated_source_count": 1,
+    "freshest_date": "2026-02-24",
+    "oldest_date": "2026-02-24",
+    "summary": "Dated evidence was available through 2026-02-24, although this claim is not strongly time-sensitive."
+  },
+  "base_source_assessments": [
+    {
+      "source_id": "S1",
+      "url": "https://en.wikipedia.org/wiki/Lyon",
+      "stance": "CONFLICT",
+      "strength": 0.44,
+      "summary": "Multiple assessments: Lyon is called the 'Capital of Lights' due to its light festival.; Lyon is referred to as the 'Capital of Lights' due to its light festival, but this does not imply it is the capital of France.",
+      "snippet_used": "The every 8 December and lasts for four days, earning Lyon the title of 'Capital of Lights'."
+    },
+    {
+      "source_id": "S2",
+      "url": "https://en.wikipedia.org/wiki/Capital_punishment_in_France",
+      "stance": "IRRELEVANT",
+      "strength": 0.0,
+      "summary": "Multiple assessments: No information about the capital of France.; This source does not provide any information about the capital of France.",
+      "snippet_used": "Capital punishment in France (French: peine de mort en France) is banned by Article 66-1 of the Constitution of the French Republic..."
+    }
+  ],
+  "manual_override": null,
+  "subclaim_results": [],
+  "subclaim_summary": {
+    "count": 0,
+    "mixed_support": false,
+    "verdict_breakdown": {},
+    "synthesis_note": ""
+  }
+}
+RISK FLAGS:
+  ! The verdict relies on sparse evidence coverage.
+  ! LLM and heuristic source assessment disagreed on 1 of 2 compared sources.
+  ! Reflection Auditor suggested FALSE, but FactLens kept the calibrated verdict because the direct evidence was not strong enough.
+
+========================================
+

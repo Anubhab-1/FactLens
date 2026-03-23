@@ -1,0 +1,544 @@
+============================= test session starts =============================
+platform win32 -- Python 3.8.10, pytest-7.4.0, pluggy-1.5.0 -- c:\python38\python.exe
+cachedir: .pytest_cache
+rootdir: c:\Users\anubhab samanta\OneDrive\Documents\Desktop\FactLens\factlens\backend
+plugins: anyio-4.5.2, asyncio-0.23.8, cov-5.0.0, flask-1.3.0, timeout-2.4.0
+asyncio: mode=strict
+collecting ... collected 98 items
+
+tests/test_ai_detector.py::AiDetectorTests::test_detect_ai_downgrades_short_benchmark_fact_lists PASSED [  1%]
+tests/test_ai_detector.py::AiDetectorTests::test_detect_ai_retries_after_malformed_response PASSED [  2%]
+tests/test_ai_detector.py::AiDetectorTests::test_detect_ai_returns_unknown_after_two_malformed_responses PASSED [  3%]
+tests/test_api_security.py::ApiSecurityTests::test_analyze_requires_review_when_extraction_is_heuristic PASSED [  4%]
+tests/test_api_security.py::ApiSecurityTests::test_analyze_reviewed_stream_uses_reviewed_claims_and_saves_report PASSED [  5%]
+tests/test_api_security.py::ApiSecurityTests::test_claim_recalculation_requires_owner_and_persists_override PASSED [  6%]
+tests/test_api_security.py::ApiSecurityTests::test_draft_claims_returns_422_when_url_scrape_fails PASSED [  7%]
+tests/test_api_security.py::ApiSecurityTests::test_draft_claims_returns_editable_payload PASSED [  8%]
+tests/test_api_security.py::ApiSecurityTests::test_extracting_done_payload_updates_claim_extraction_state PASSED [  9%]
+tests/test_api_security.py::ApiSecurityTests::test_rate_limiter_returns_429_after_limit_is_exceeded PASSED [ 10%]
+tests/test_api_security.py::ApiSecurityTests::test_reports_are_scoped_to_the_request_session PASSED [ 11%]
+tests/test_api_security.py::ApiSecurityTests::test_share_token_allows_read_without_manage_access PASSED [ 12%]
+tests/test_api_security.py::ApiSecurityTests::test_source_text_payload_updates_report_state PASSED [ 13%]
+tests/test_media_detector.py::MediaDetectorTests::test_detect_media_auto_falls_back_to_vision_heuristic_with_warning PASSED [ 14%]
+tests/test_media_detector.py::MediaDetectorTests::test_detect_media_disabled_returns_caveated_unknown_result PASSED [ 15%]
+tests/test_media_detector.py::MediaDetectorTests::test_detect_media_uses_specialized_classifier_when_configured PASSED [ 16%]
+tests/test_report_exports.py::ReportExportTests::test_build_report_pdf_includes_contradiction_type_labels PASSED [ 17%]
+tests/test_report_exports.py::ReportExportTests::test_build_report_pdf_returns_pdf_bytes PASSED [ 18%]
+tests/test_report_exports.py::ReportExportTests::test_export_report_pdf_response_has_pdf_headers PASSED [ 19%]
+tests/test_reports_storage.py::ReportStorageTests::test_database_url_override_uses_configured_sqlite_url PASSED [ 20%]
+tests/test_reports_storage.py::ReportStorageTests::test_delete_report_removes_it_from_storage PASSED [ 21%]
+tests/test_reports_storage.py::ReportStorageTests::test_legacy_json_reports_are_imported_into_sqlite PASSED [ 22%]
+tests/test_reports_storage.py::ReportStorageTests::test_list_reports_returns_newest_first PASSED [ 23%]
+tests/test_reports_storage.py::ReportStorageTests::test_pinned_reports_sort_ahead_of_unpinned PASSED [ 24%]
+tests/test_reports_storage.py::ReportStorageTests::test_report_requires_owner_or_share_token_for_access PASSED [ 25%]
+tests/test_reports_storage.py::ReportStorageTests::test_save_and_get_report_round_trip PASSED [ 26%]
+tests/test_reports_storage.py::ReportStorageTests::test_save_report_persists_evaluation_diagnostics PASSED [ 27%]
+tests/test_reports_storage.py::ReportStorageTests::test_update_report_metadata_pins_and_archives_report PASSED [ 28%]
+tests/test_retriever.py::RetrieverTests::test_build_claim_specific_queries_adds_known_entity_alias_variants PASSED [ 29%]
+tests/test_retriever.py::RetrieverTests::test_build_claim_specific_queries_targets_known_fact_patterns PASSED [ 30%]
+tests/test_retriever.py::RetrieverTests::test_build_search_api_result_uses_snippet_when_fetch_fails PASSED [ 31%]
+tests/test_retriever.py::RetrieverTests::test_build_source_context_queries_use_named_phrases_for_ship_claims PASSED [ 32%]
+tests/test_retriever.py::RetrieverTests::test_build_source_context_queries_uses_source_url_slug PASSED [ 33%]
+tests/test_retriever.py::RetrieverTests::test_build_source_record_drops_ambiguous_google_earth_result PASSED [ 34%]
+tests/test_retriever.py::RetrieverTests::test_build_source_record_drops_generic_ocean_page_without_claim_match PASSED [ 35%]
+tests/test_retriever.py::RetrieverTests::test_build_source_record_tags_first_party_company_pages PASSED [ 36%]
+tests/test_retriever.py::RetrieverTests::test_execute_query_batch_tries_next_provider_when_first_provider_adds_no_sources PASSED [ 37%]
+tests/test_retriever.py::RetrieverTests::test_extract_result_url_ignores_duckduckgo_tracker_links PASSED [ 38%]
+tests/test_retriever.py::RetrieverTests::test_fetch_fallback_result_discards_binary_pdf_content PASSED [ 39%]
+tests/test_retriever.py::RetrieverTests::test_focus_content_for_claim_finds_relevant_window_late_in_long_page PASSED [ 40%]
+tests/test_retriever.py::RetrieverTests::test_generate_queries_serializes_llm_calls_across_claims PASSED [ 41%]
+tests/test_retriever.py::RetrieverTests::test_result_matches_query_constraints_requires_matching_domain PASSED [ 42%]
+tests/test_retriever.py::RetrieverTests::test_retrieve_evidence_falls_back_to_bing_when_other_providers_fail PASSED [ 43%]
+tests/test_retriever.py::RetrieverTests::test_retrieve_evidence_falls_back_to_heuristic_recovery_when_planner_fails FAILED [ 44%]
+tests/test_retriever.py::RetrieverTests::test_retrieve_evidence_seeds_source_article_for_url_claim PASSED [ 45%]
+tests/test_retriever.py::RetrieverTests::test_retrieve_evidence_surfaces_string_search_errors FAILED [ 46%]
+tests/test_retriever.py::RetrieverTests::test_retrieve_evidence_uses_llm_planned_recovery_queries FAILED [ 47%]
+tests/test_retriever.py::RetrieverTests::test_search_query_provider_attempts_uses_serper_when_configured PASSED [ 48%]
+tests/test_retriever.py::RetrieverTests::test_search_query_provider_attempts_uses_wikipedia_when_other_search_is_unavailable FAILED [ 50%]
+tests/test_retriever.py::RetrieverTests::test_select_diverse_sources_demotes_social_results_for_plain_fact_claims PASSED [ 51%]
+tests/test_retriever.py::RetrieverTests::test_select_query_mix_preserves_claim_specific_authoritative_query PASSED [ 52%]
+tests/test_retriever.py::RetrieverTests::test_serper_search_sync_builds_grounded_results PASSED [ 53%]
+tests/test_retriever.py::RetrieverTests::test_wikipedia_search_sync_builds_grounded_results PASSED [ 54%]
+tests/test_scoring.py::ScoringTests::test_calibrate_verdict_material_conflict_blocks_true PASSED [ 55%]
+tests/test_scoring.py::ScoringTests::test_calibrate_verdict_partial_when_sources_conflict PASSED [ 56%]
+tests/test_scoring.py::ScoringTests::test_calibrate_verdict_time_sensitive_claim_needs_dated_evidence PASSED [ 57%]
+tests/test_scoring.py::ScoringTests::test_calibrate_verdict_true_with_clean_timeless_consensus PASSED [ 58%]
+tests/test_scoring.py::ScoringTests::test_calibrate_verdict_true_with_grounded_consensus_without_authoritative_support PASSED [ 59%]
+tests/test_scoring.py::ScoringTests::test_calibrate_verdict_true_with_strong_support PASSED [ 60%]
+tests/test_scoring.py::ScoringTests::test_claim_alias_phrases_expand_known_entities_and_titles PASSED [ 61%]
+tests/test_scoring.py::ScoringTests::test_classify_claim_type_prefers_numeric PASSED [ 62%]
+tests/test_scoring.py::ScoringTests::test_compute_relevance_score_uses_alias_expansion_for_known_entities PASSED [ 63%]
+tests/test_scoring.py::ScoringTests::test_exact_value_claims_preserve_short_symbol_tokens PASSED [ 64%]
+tests/test_scoring.py::ScoringTests::test_extract_best_snippet_selects_most_relevant_sentence PASSED [ 65%]
+tests/test_scoring.py::ScoringTests::test_extract_claims_drops_refined_claims_that_rewrite_the_source PASSED [ 66%]
+tests/test_scoring.py::ScoringTests::test_extract_claims_falls_back_to_heuristics_when_retry_parse_is_malformed PASSED [ 67%]
+tests/test_scoring.py::ScoringTests::test_extract_claims_uses_chunked_llm_extraction_for_long_input PASSED [ 68%]
+tests/test_scoring.py::ScoringTests::test_extract_claims_uses_heuristics_only_when_no_provider_is_configured PASSED [ 69%]
+tests/test_scoring.py::ScoringTests::test_extract_evidence_passages_prefers_direct_grounding_sentence PASSED [ 70%]
+tests/test_scoring.py::ScoringTests::test_extract_evidence_passages_uses_numeric_alignment PASSED [ 71%]
+tests/test_scoring.py::ScoringTests::test_infer_source_origin_detects_first_party_company_page PASSED [ 72%]
+tests/test_scoring.py::ScoringTests::test_outline_detection_blocks_table_of_contents_input PASSED [ 73%]
+tests/test_scoring.py::ScoringTests::test_parse_json_array_raises_value_error_on_unterminated_string PASSED [ 74%]
+tests/test_scoring.py::ScoringTests::test_parse_published_date_ignores_invalid_month_matches PASSED [ 75%]
+tests/test_scoring.py::ScoringTests::test_recalculate_claim_result_support_override_flips_verdict PASSED [ 76%]
+tests/test_scoring.py::ScoringTests::test_recalculate_claim_result_with_empty_overrides_resets_to_base_verdict PASSED [ 77%]
+tests/test_scoring.py::ScoringTests::test_retrieve_evidence_runs_recovery_when_primary_pass_is_sparse FAILED [ 78%]
+tests/test_scoring.py::ScoringTests::test_retrieve_evidence_skips_recovery_when_primary_pass_is_strong FAILED [ 79%]
+tests/test_scoring.py::ScoringTests::test_retrieve_evidence_surfaces_grounded_passages FAILED [ 80%]
+tests/test_scoring.py::ScoringTests::test_summarize_conflict_profile_classifies_debunking_and_entity_mismatch PASSED [ 81%]
+tests/test_scoring.py::ScoringTests::test_summarize_conflict_profile_identifies_temporal_and_numeric_drift PASSED [ 82%]
+tests/test_scoring.py::ScoringTests::test_summarize_conflict_profile_marks_scope_mismatch_when_mixed_evidence_exists PASSED [ 83%]
+tests/test_scoring.py::ScoringTests::test_summarize_conflict_profile_uses_mixed_evidence_when_support_bucket_is_empty PASSED [ 84%]
+tests/test_scoring.py::ScoringTests::test_summarize_retrieval_counts_dated_sources_and_domains PASSED [ 85%]
+tests/test_scoring.py::ScoringTests::test_verify_claim_blocks_reflection_from_forcing_false_without_direct_evidence FAILED [ 86%]
+tests/test_scoring.py::ScoringTests::test_verify_claim_builds_subclaim_map_for_compound_claims PASSED [ 87%]
+tests/test_scoring.py::ScoringTests::test_verify_claim_cross_checks_llm_against_heuristics_per_source PASSED [ 88%]
+tests/test_scoring.py::ScoringTests::test_verify_claim_downgrades_quasi_moon_conflict_for_earth_satellite_claim PASSED [ 89%]
+tests/test_scoring.py::ScoringTests::test_verify_claim_falls_back_to_heuristics_when_model_fails PASSED [ 90%]
+tests/test_scoring.py::ScoringTests::test_verify_claim_marks_missing_dated_evidence_for_time_sensitive_claims PASSED [ 91%]
+tests/test_scoring.py::ScoringTests::test_verify_claim_requires_direct_location_grounding_for_geography_claims PASSED [ 92%]
+tests/test_scoring.py::ScoringTests::test_verify_claim_surfaces_retrieval_warning_when_no_sources_exist PASSED [ 93%]
+tests/test_scoring.py::ScoringTests::test_verify_claim_uses_default_reasoning_when_model_overstates_support PASSED [ 94%]
+tests/test_scoring.py::ScoringTests::test_verify_claim_uses_heuristics_to_rescue_direct_contextual_evidence PASSED [ 95%]
+tests/test_scraper.py::ScraperTests::test_scrape_url_raises_when_both_fast_and_browser_capture_fail PASSED [ 96%]
+tests/test_scraper.py::ScraperTests::test_scrape_url_returns_usable_fast_capture_if_browser_fallback_fails PASSED [ 97%]
+tests/test_scraper.py::ScraperTests::test_scrape_url_uses_browser_fallback_when_fast_capture_is_thin PASSED [ 98%]
+tests/test_scraper.py::ScraperTests::test_scrape_url_uses_fast_html_capture_when_text_is_strong PASSED [100%]
+
+================================== FAILURES ===================================
+_ RetrieverTests.test_retrieve_evidence_falls_back_to_heuristic_recovery_when_planner_fails _
+
+self = <test_retriever.RetrieverTests testMethod=test_retrieve_evidence_falls_back_to_heuristic_recovery_when_planner_fails>
+
+    def test_retrieve_evidence_falls_back_to_heuristic_recovery_when_planner_fails(self) -> None:
+        claim = _claim()
+        llm = _QueuedLLM(["not valid json"])
+        heuristic_query = f"{claim['claim']} official statistics report dataset"
+        search_tool = _FakeSearchTool(
+            {
+                claim["claim"]: _poor_primary_result(),
+                heuristic_query: _strong_recovery_result(),
+            }
+        )
+    
+        async def fake_generate_queries(_claim: dict) -> list[dict]:
+            return [
+                {
+                    "query": claim["claim"],
+                    "objective": "direct",
+                    "phase": "primary",
+                    "planner": "llm",
+                }
+            ]
+    
+        with patch.object(retriever, "_generate_queries", new=fake_generate_queries):
+            with patch.object(retriever, "search_tool", new=search_tool):
+                with patch.object(retriever, "llm", new=llm):
+                    with patch.object(
+                        retriever,
+                        "llm_descriptor",
+                        new=SimpleNamespace(issue=None),
+                    ):
+                        with patch.object(retriever, "_search_with_duckduckgo", return_value=[]):
+                            with patch.object(retriever, "_search_with_bing", return_value=[]):
+                                result = asyncio.run(retriever.retrieve_evidence(claim))
+    
+        self.assertTrue(result["retrieval_summary"]["recovery_triggered"])
+>       self.assertEqual(result["retrieval_summary"]["recovery_strategy"], "heuristic_fallback")
+E       AssertionError: 'heuristic' != 'heuristic_fallback'
+E       - heuristic
+E       + heuristic_fallback
+
+tests\test_retriever.py:789: AssertionError
+_____ RetrieverTests.test_retrieve_evidence_surfaces_string_search_errors _____
+
+self = <test_retriever.RetrieverTests testMethod=test_retrieve_evidence_surfaces_string_search_errors>
+
+    def test_retrieve_evidence_surfaces_string_search_errors(self) -> None:
+        claim = _claim()
+    
+        async def fake_generate_queries(_claim: dict) -> list[dict]:
+            return [
+                {
+                    "query": claim["claim"],
+                    "objective": "direct",
+                    "phase": "primary",
+                    "planner": "llm",
+                }
+            ]
+    
+        with patch.object(retriever, "_generate_queries", new=fake_generate_queries):
+            with patch.object(
+                retriever,
+                "search_tool",
+                new=_StringSearchTool("HTTPError('432 Client Error')"),
+            ):
+                with patch.object(
+                    retriever,
+                    "_search_with_duckduckgo",
+                    side_effect=RuntimeError("DuckDuckGo unavailable"),
+                ):
+                    with patch.object(
+                        retriever,
+                        "_search_with_wikipedia",
+                        side_effect=RuntimeError("Wikipedia unavailable"),
+                    ):
+                        with patch.object(
+                            retriever,
+                            "_search_with_bing",
+                            side_effect=RuntimeError("Bing unavailable"),
+                        ):
+                            result = asyncio.run(retriever.retrieve_evidence(claim))
+    
+        self.assertEqual(result["sources"], [])
+>       self.assertIn("432 Client Error", result["error"])
+E       AssertionError: '432 Client Error' not found in 'Circuit breaker open; Wikipedia unavailable; Circuit breaker open; Bing unavailable; Circuit breaker open; Wikipedia unavailable; Circuit breaker open; Bing unavailable; Circuit breaker open; Wikipedia unavailable; Circuit breaker open; Bing unavailable; Circuit breaker open; Wikipedia unavailable; Circuit breaker open; Bing unavailable; Circuit breaker open; Wikipedia unavailable; Circuit breaker open; Bing unavailable'
+
+tests\test_retriever.py:832: AssertionError
+___ RetrieverTests.test_retrieve_evidence_uses_llm_planned_recovery_queries ___
+
+self = <test_retriever.RetrieverTests testMethod=test_retrieve_evidence_uses_llm_planned_recovery_queries>
+
+    def test_retrieve_evidence_uses_llm_planned_recovery_queries(self) -> None:
+        claim = _claim()
+        llm = _QueuedLLM(
+            [
+                json.dumps(
+                    {
+                        "decision": "search",
+                        "reasoning": "The first pass lacks an authoritative dated source.",
+                        "queries": [
+                            {
+                                "query": "city approved 18 million budget 2026 official record",
+                                "objective": "authoritative",
+                            }
+                        ],
+                    }
+                )
+            ]
+        )
+        search_tool = _FakeSearchTool(
+            {
+                claim["claim"]: _poor_primary_result(),
+                "city approved 18 million budget 2026 official record": _strong_recovery_result(),
+            }
+        )
+    
+        async def fake_generate_queries(_claim: dict) -> list[dict]:
+            return [
+                {
+                    "query": claim["claim"],
+                    "objective": "direct",
+                    "phase": "primary",
+                    "planner": "llm",
+                }
+            ]
+    
+        with patch.object(retriever, "_generate_queries", new=fake_generate_queries):
+            with patch.object(retriever, "search_tool", new=search_tool):
+                with patch.object(retriever, "llm", new=llm):
+                    with patch.object(
+                        retriever,
+                        "llm_descriptor",
+                        new=SimpleNamespace(issue=None),
+                    ):
+                        with patch.object(retriever, "_search_with_duckduckgo", return_value=[]):
+                            with patch.object(retriever, "_search_with_bing", return_value=[]):
+                                result = asyncio.run(retriever.retrieve_evidence(claim))
+    
+        self.assertTrue(result["retrieval_summary"]["recovery_triggered"])
+>       self.assertIn(
+            result["retrieval_summary"]["recovery_strategy"],
+            {"llm_planner", "heuristic_after_llm"},
+        )
+E       AssertionError: 'heuristic' not found in {'heuristic_after_llm', 'llm_planner'}
+
+tests\test_retriever.py:742: AssertionError
+_ RetrieverTests.test_search_query_provider_attempts_uses_wikipedia_when_other_search_is_unavailable _
+
+self = <test_retriever.RetrieverTests testMethod=test_search_query_provider_attempts_uses_wikipedia_when_other_search_is_unavailable>
+
+    def test_search_query_provider_attempts_uses_wikipedia_when_other_search_is_unavailable(self) -> None:
+        async def run_attempts():
+            with patch.object(
+                retriever,
+                "search_tool",
+                new=_StringSearchTool("plan limit reached"),
+            ):
+                with patch.object(retriever, "_search_with_wikipedia", return_value=_strong_recovery_result()):
+                    with patch.object(retriever, "_search_with_duckduckgo", return_value=[]):
+                        with patch.object(retriever, "_search_with_bing", return_value=[]):
+                            return await retriever._search_query_provider_attempts("Paris capital of France")
+    
+        attempts = asyncio.run(run_attempts())
+    
+        self.assertTrue(any(attempt["provider"] == "wikipedia" for attempt in attempts))
+        wikipedia_attempt = next(attempt for attempt in attempts if attempt["provider"] == "wikipedia")
+>       self.assertEqual(len(wikipedia_attempt["results"]), 1)
+E       AssertionError: 0 != 1
+
+tests\test_retriever.py:175: AssertionError
+_ ScoringTests.test_retrieve_evidence_runs_recovery_when_primary_pass_is_sparse _
+
+self = <test_scoring.ScoringTests testMethod=test_retrieve_evidence_runs_recovery_when_primary_pass_is_sparse>
+
+    def test_retrieve_evidence_runs_recovery_when_primary_pass_is_sparse(self) -> None:
+        claim = {
+            "id": "1",
+            "claim": "The current CEO of ExampleCorp is Jane Doe.",
+            "claim_type": "entity",
+            "time_sensitive": True,
+        }
+    
+        class FakeSearchTool:
+            async def ainvoke(self, payload: dict) -> list[dict]:
+                if payload["query"] == "primary query":
+                    return []
+                if payload["query"] == "recovery query":
+                    return [
+                        {
+                            "url": "https://example.com/leadership",
+                            "title": "Leadership team",
+                            "content": "Jane Doe is the current CEO of ExampleCorp as of March 2026.",
+                            "published_date": "2026-03-15",
+                        }
+                    ]
+                return []
+    
+        async def fake_generate_queries(_claim: dict) -> list[dict]:
+            return [{"query": "primary query", "objective": "direct", "phase": "primary"}]
+    
+        recovery_queries = [
+            {"query": "recovery query", "objective": "recency", "phase": "recovery"}
+        ]
+    
+        with patch("pipeline.retriever.search_tool", FakeSearchTool()):
+            with patch("pipeline.retriever._generate_queries", new=fake_generate_queries):
+                with patch("pipeline.retriever._build_recovery_queries", return_value=recovery_queries):
+                    with patch("pipeline.retriever._search_with_duckduckgo", return_value=[]):
+                        with patch("pipeline.retriever._search_with_bing", return_value=[]):
+                            evidence = asyncio.run(retrieve_evidence(claim))
+    
+>       self.assertEqual(len(evidence["sources"]), 1)
+E       AssertionError: 0 != 1
+
+tests\test_scoring.py:912: AssertionError
+_ ScoringTests.test_retrieve_evidence_skips_recovery_when_primary_pass_is_strong _
+
+self = <test_scoring.ScoringTests testMethod=test_retrieve_evidence_skips_recovery_when_primary_pass_is_strong>
+
+    def test_retrieve_evidence_skips_recovery_when_primary_pass_is_strong(self) -> None:
+        claim = {
+            "id": "1",
+            "claim": "Mars has two moons named Phobos and Deimos.",
+            "claim_type": "entity",
+            "time_sensitive": False,
+        }
+    
+        class FakeSearchTool:
+            async def ainvoke(self, _payload: dict) -> list[dict]:
+                return [
+                    {
+                        "url": "https://science.example/mars-facts",
+                        "title": "Mars Facts",
+                        "content": "Mars has two moons named Phobos and Deimos.",
+                        "published_date": "2026-03-20",
+                    },
+                    {
+                        "url": "https://space.example/mars-overview",
+                        "title": "Mars overview",
+                        "content": "The two moons of Mars are Phobos and Deimos.",
+                        "published_date": "2026-03-19",
+                    },
+                ]
+    
+        async def fake_generate_queries(_claim: dict) -> list[dict]:
+            return [{"query": "primary query", "objective": "direct", "phase": "primary"}]
+    
+        with patch("pipeline.retriever.search_tool", FakeSearchTool()):
+            with patch("pipeline.retriever._generate_queries", new=fake_generate_queries):
+                with patch("pipeline.retriever._build_recovery_queries") as recovery_builder:
+                    evidence = asyncio.run(retrieve_evidence(claim))
+    
+>       recovery_builder.assert_not_called()
+
+tests\test_scoring.py:953: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <MagicMock name='_build_recovery_queries' id='1760914478320'>
+
+    def assert_not_called(self):
+        """assert that the mock was never called.
+        """
+        if self.call_count != 0:
+            msg = ("Expected '%s' to not have been called. Called %s times.%s"
+                   % (self._mock_name or 'mock',
+                      self.call_count,
+                      self._calls_repr()))
+>           raise AssertionError(msg)
+E           AssertionError: Expected '_build_recovery_queries' to not have been called. Called 1 times.
+E           Calls: [call({'id': '1', 'claim': 'Mars has two moons named Phobos and Deimos.', 'claim_type': 'entity', 'time_sensitive': False}, [{'query': 'primary query', 'objective': 'direct', 'phase': 'primary', 'provider_attempts': [{'provider': 'tavily', 'status': 'error', 'result_count': 0, 'added_source_count': 0, 'fallback_used': False, 'warning': 'tavily circuit breaker is open due to repeated failures', 'error': 'Circuit breaker open'}, {'provider': 'wikipedia', 'status': 'error', 'result_count': 0, 'added_source_count': 0, 'fallback_used': True, 'warning': 'wikipedia circuit breaker is open due to repeated failures', 'error': 'Circuit breaker open'}, {'provider': 'duckduckgo_html', 'status': 'error', 'result_count': 0, 'added_source_count': 0, 'fallback_used': True, 'warning': 'duckduckgo_html circuit breaker is open due to repeated failures', 'error': 'Circuit breaker open'}, {'provider': 'bing_html', 'status': 'error', 'result_count': 0, 'added_source_count': 0, 'fallback_used': True, 'warning': 'bing_html circuit breaker is open due to repeated failures', 'error': 'Circuit breaker open'}], 'status': 'error', 'result_count': 0, 'provider': 'bing_html', 'fallback_used': True, 'added_source_count': 0, 'warning': 'Circuit breaker open; bing_html circuit breaker is open due to repeated failures', 'error': 'Circuit breaker open'}], []),
+E            call().__bool__(),
+E            call().__bool__(),
+E            call().__iter__(),
+E            call().__len__(),
+E            call().__iter__(),
+E            call().__bool__(),
+E            call().__len__()].
+
+c:\python38\lib\unittest\mock.py:874: AssertionError
+_______ ScoringTests.test_retrieve_evidence_surfaces_grounded_passages ________
+
+self = <test_scoring.ScoringTests testMethod=test_retrieve_evidence_surfaces_grounded_passages>
+
+    def test_retrieve_evidence_surfaces_grounded_passages(self) -> None:
+        claim = {
+            "id": "1",
+            "claim": "Mars has two moons named Phobos and Deimos.",
+            "claim_type": "entity",
+            "time_sensitive": False,
+        }
+    
+        class FakeSearchTool:
+            async def ainvoke(self, _payload: dict) -> list[dict]:
+                return [
+                    {
+                        "url": "https://science.example/mars-facts",
+                        "title": "Mars Facts",
+                        "content": (
+                            "Mars has two moons named Phobos and Deimos. "
+                            "The moons are thought to be captured asteroids."
+                        ),
+                        "published_date": "2026-03-20",
+                    }
+                ]
+    
+        async def fake_generate_queries(_claim: dict) -> list[dict]:
+            return [{"query": "Mars moons Phobos Deimos", "objective": "direct"}]
+    
+        async def fake_plan_recovery_queries(*_args, **_kwargs):
+            return [], {
+                "mode": "not_needed",
+                "reasoning": "",
+                "fallback_used": False,
+            }
+    
+        with patch("pipeline.retriever.search_tool", FakeSearchTool()):
+            with patch("pipeline.retriever._generate_queries", new=fake_generate_queries):
+                with patch("pipeline.retriever._plan_recovery_queries", new=fake_plan_recovery_queries):
+                    evidence = asyncio.run(retrieve_evidence(claim))
+    
+        self.assertEqual(evidence["claim_id"], "1")
+>       self.assertEqual(len(evidence["sources"]), 1)
+E       AssertionError: 0 != 1
+
+tests\test_scoring.py:864: AssertionError
+_ ScoringTests.test_verify_claim_blocks_reflection_from_forcing_false_without_direct_evidence _
+
+self = <test_scoring.ScoringTests testMethod=test_verify_claim_blocks_reflection_from_forcing_false_without_direct_evidence>
+
+    def test_verify_claim_blocks_reflection_from_forcing_false_without_direct_evidence(self) -> None:
+        claim = {
+            "id": "1",
+            "claim": "Berlin is in Spain.",
+            "claim_type": "entity",
+            "time_sensitive": False,
+        }
+        evidence = {
+            "claim_id": "1",
+            "sources": [
+                {
+                    "id": "S1",
+                    "title": "Berlin - Wikipedia",
+                    "url": "https://en.wikipedia.org/wiki/Berlin",
+                    "domain": "en.wikipedia.org",
+                    "published_label": "unknown",
+                    "authority_score": 0.74,
+                    "relevance_score": 0.76,
+                    "overall_score": 0.73,
+                    "published_date": "unknown",
+                    "snippet": "Friedrichstrasse was Berlin's legendary street during the Golden Twenties.",
+                    "evidence_passages": [
+                        {
+                            "text": "Friedrichstrasse was Berlin's legendary street during the Golden Twenties.",
+                            "score": 0.54,
+                        }
+                    ],
+                },
+                {
+                    "id": "S2",
+                    "title": "Money Heist spinoff",
+                    "url": "https://example.com/berlin-series",
+                    "domain": "example.com",
+                    "published_label": "unknown",
+                    "authority_score": 0.55,
+                    "relevance_score": 0.58,
+                    "overall_score": 0.56,
+                    "published_date": "unknown",
+                    "snippet": "The series Berlin will be set in Paris and Spain.",
+                    "evidence_passages": [
+                        {
+                            "text": "The series Berlin will be set in Paris and Spain.",
+                            "score": 0.57,
+                        }
+                    ],
+                },
+                {
+                    "id": "S3",
+                    "title": "Travel demand report",
+                    "url": "https://example.net/travel-demand",
+                    "domain": "example.net",
+                    "published_label": "unknown",
+                    "authority_score": 0.55,
+                    "relevance_score": 0.58,
+                    "overall_score": 0.56,
+                    "published_date": "unknown",
+                    "snippet": "Spain is one of the countries with the highest demand for flights to Berlin.",
+                    "evidence_passages": [
+                        {
+                            "text": "Spain is one of the countries with the highest demand for flights to Berlin.",
+                            "score": 0.55,
+                        }
+                    ],
+                },
+            ],
+            "query_variants": [],
+            "retrieval_summary": {"source_count": 3},
+            "error": None,
+        }
+        llm = _QueuedVerifierLLM(
+            [
+                '{"reasoning":"The evidence is mixed.","claim_requires_recency":false,"risk_flags":[],"source_assessments":[{"source_id":"S1","stance":"CONFLICT","strength":0.74,"summary":"Provides information about Berlin.","snippet_used":"Friedrichstrasse was Berlin\\u0027s legendary street during the Golden Twenties."},{"source_id":"S2","stance":"MIXED","strength":0.55,"summary":"Mentions Berlin and Spain.","snippet_used":"The series Berlin will be set in Paris and Spain."},{"source_id":"S3","stance":"MIXED","strength":0.55,"summary":"Mentions Berlin in relation to Spain.","snippet_used":"Spain is one of the countries with the highest demand for flights to Berlin."}]}',
+                '{"correction_needed": true, "suggested_verdict": "FALSE", "reasoning": "Berlin is not in Spain."}',
+            ]
+        )
+    
+        with patch("pipeline.verifier.llm", new=llm):
+            result = asyncio.run(verify_claim(claim, evidence))
+    
+        self.assertEqual(result["verdict"], "UNVERIFIABLE")
+>       self.assertTrue(
+            any(
+                "suggested FALSE" in flag
+                for flag in result["risk_flags"]
+            )
+        )
+E       AssertionError: False is not true
+
+tests\test_scoring.py:1528: AssertionError
+============================== warnings summary ===============================
+..\..\..\..\..\..\..\..\python38\lib\site-packages\langchain_nvidia_ai_endpoints\_common.py:197
+  c:\python38\lib\site-packages\langchain_nvidia_ai_endpoints\_common.py:197: UserWarning: Found meta/llama-3.2-90b-vision-instruct in available_models, but type is unknown and inference may fail.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/test_retriever.py::RetrieverTests::test_retrieve_evidence_falls_back_to_heuristic_recovery_when_planner_fails
+FAILED tests/test_retriever.py::RetrieverTests::test_retrieve_evidence_surfaces_string_search_errors
+FAILED tests/test_retriever.py::RetrieverTests::test_retrieve_evidence_uses_llm_planned_recovery_queries
+FAILED tests/test_retriever.py::RetrieverTests::test_search_query_provider_attempts_uses_wikipedia_when_other_search_is_unavailable
+FAILED tests/test_scoring.py::ScoringTests::test_retrieve_evidence_runs_recovery_when_primary_pass_is_sparse
+FAILED tests/test_scoring.py::ScoringTests::test_retrieve_evidence_skips_recovery_when_primary_pass_is_strong
+FAILED tests/test_scoring.py::ScoringTests::test_retrieve_evidence_surfaces_grounded_passages
+FAILED tests/test_scoring.py::ScoringTests::test_verify_claim_blocks_reflection_from_forcing_false_without_direct_evidence
+================== 8 failed, 90 passed, 1 warning in 17.56s ===================

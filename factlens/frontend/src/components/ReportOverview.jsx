@@ -1,5 +1,4 @@
-import { AlertTriangle, CheckCircle2, Clock3, SearchCheck } from "lucide-react";
-
+import { AlertCircle, CheckCircle2, Clock, Globe, Youtube, FileText, Zap } from "lucide-react";
 import {
   formatSessionDate,
   getFreshestEvidence,
@@ -8,81 +7,84 @@ import {
 } from "../lib/sessions";
 
 const VERDICT_META = {
-  TRUE: { badge: "bg-emerald-500/12 text-emerald-200 ring-1 ring-inset ring-emerald-400/20", glow: "glow-emerald" },
-  FALSE: { badge: "bg-rose-500/12 text-rose-200 ring-1 ring-inset ring-rose-400/20", glow: "glow-rose" },
-  PARTIALLY_TRUE: { badge: "bg-amber-500/12 text-amber-200 ring-1 ring-inset ring-amber-400/20", glow: "glow-amber" },
-  UNVERIFIABLE: { badge: "bg-slate-500/12 text-slate-200 ring-1 ring-inset ring-slate-400/20", glow: "glow-slate" },
+  TRUE: { color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
+  FALSE: { color: "text-rose-400", bg: "bg-rose-500/10", border: "border-rose-500/20" },
+  PARTIALLY_TRUE: { color: "text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/20" },
+  UNVERIFIABLE: { color: "text-neutral-400", bg: "bg-neutral-500/10", border: "border-neutral-500/20" },
 };
 
-function SummaryCard({ icon: Icon, label, value, helper, delay = "" }) {
+function StatItem({ icon: Icon, label, value, colorClass = "text-white" }) {
   return (
-    <div className={`glass-card rounded-[1.4rem] px-4 py-4 sm:px-5 sm:py-5 animate-fade-in-up ${delay}`}>
-      <div className="flex items-center gap-2 text-slate-400">
-        <Icon className="h-4 w-4 shrink-0" />
-        <p className="text-xs font-semibold uppercase tracking-[0.2em]">{label}</p>
+    <div className="flex flex-col gap-1">
+      <div className="flex items-center gap-2 text-neutral-500">
+        <Icon className="h-3.5 w-3.5" />
+        <span className="text-[10px] font-bold uppercase tracking-widest">{label}</span>
       </div>
-      <p className="mt-2 font-mono text-2xl font-semibold text-white sm:mt-3 sm:text-3xl">{value}</p>
-      <p className="mt-2 text-sm leading-6 text-slate-400">{helper}</p>
+      <p className={`text-2xl font-semibold tabular-nums ${colorClass}`}>{value}</p>
+      <p className="text-[10px] font-mono uppercase tracking-wide text-neutral-500">
+        {label}: {value}
+      </p>
     </div>
   );
 }
 
-function getNarrative(stats) {
-  if (stats.verifiedCount === 0) {
-    return "No claim reached a completed verdict yet.";
-  }
-  if (stats.conflictCount > 0) {
-    return "Conflicting evidence surfaced. Review disputed claims before treating this report as settled.";
-  }
-  if (stats.unresolvedCount > 0) {
-    return "Several claims require manual review because available evidence stayed partial or unverifiable.";
-  }
-  return "This run resolved its extracted claims cleanly with no unresolved verdicts.";
-}
-
 function ReportOverview({ session }) {
   const stats = getSessionStats(session);
+  const credibilityScore = Math.round((stats.counts.TRUE / (stats.totalClaims || 1)) * 100);
+  
+  const sourceIcon = {
+    youtube: <Youtube className="h-4 w-4" />,
+    url: <Globe className="h-4 w-4" />,
+    text: <FileText className="h-4 w-4" />,
+  }[session.inputMode || "text"];
+
+  const sourceLabel = {
+    youtube: "YouTube Transcript",
+    url: "Web Article",
+    text: "Pasted Text",
+  }[session.inputMode || "text"];
 
   return (
-    <section className="glass-card-static rounded-[2rem] p-4 animate-fade-in-up gradient-border sm:p-6">
-      <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
-        <div className="min-w-0 flex-1">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-blue-300">Saved report</p>
-          <h1 className="mt-2 text-2xl font-semibold text-white sm:text-3xl">
+    <section className="animate-fade-in-up space-y-10">
+      <div className="flex flex-col items-start justify-between gap-8 lg:flex-row lg:items-end">
+        <div className="space-y-4 max-w-2xl">
+          <div className="flex items-center gap-3">
+             <div className="flex items-center gap-2 rounded-full border border-white/5 bg-white/5 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-neutral-400">
+                {sourceIcon}
+                {sourceLabel}
+             </div>
+             <div className="flex items-center gap-2 rounded-full border border-blue-500/20 bg-blue-500/10 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-blue-400">
+                <Zap className="h-3 w-3 fill-current" />
+                AI VERIFIED
+             </div>
+          </div>
+          
+          <h1 className="text-4xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-6xl">
             {getSessionTitle(session)}
           </h1>
-          <p className="mt-3 text-sm leading-7 text-slate-400">
-            Created {formatSessionDate(session.createdAt)} from {session.inputMode === "url" ? "an article URL" : "pasted text"}. {getNarrative(stats)}
+          
+          <p className="text-lg text-neutral-400 leading-relaxed">
+            Verification generated on {formatSessionDate(session.createdAt)}. analyzed {stats.totalClaims} atomic claims with cross-reference searches.
           </p>
         </div>
 
-        <div className="glass-card w-full rounded-[1.5rem] px-4 py-4 sm:px-5 xl:w-auto xl:max-w-md">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Review posture</p>
-          <p className="mt-2 text-xl font-semibold text-white sm:text-2xl">
-            {stats.conflictCount > 0 ? "Needs careful review" : stats.unresolvedCount > 0 ? "Mostly resolved" : "Clean pass"}
-          </p>
-          <p className="mt-2 text-sm leading-6 text-slate-400">
-            {stats.totalClaims} extracted, {stats.verifiedCount} with completed verdicts.
-          </p>
+        <div className="glass-card-static flex flex-col items-center justify-center p-8 text-center ring-1 ring-white/5 lg:p-10">
+           <div className="text-6xl font-black tracking-tighter text-white sm:text-7xl">
+              {credibilityScore}%
+           </div>
+           <div className="mt-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-400">
+              Credibility Score
+           </div>
         </div>
       </div>
 
-      <div className="mt-6 flex flex-wrap gap-2 sm:gap-3">
-        {Object.entries(stats.counts).map(([verdict, count]) => (
-          <span
-            key={verdict}
-            className={`rounded-full px-3 py-1.5 text-xs font-medium sm:px-4 sm:py-2 sm:text-sm ${(VERDICT_META[verdict] || VERDICT_META.UNVERIFIABLE).badge}`}
-          >
-            {verdict.replace(/_/g, " ")}: {count}
-          </span>
-        ))}
-      </div>
-
-      <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-        <SummaryCard icon={SearchCheck} label="Verified" value={stats.verifiedCount} helper="Claims with completed verdicts." delay="delay-1" />
-        <SummaryCard icon={AlertTriangle} label="Needs review" value={stats.unresolvedCount} helper="Partial or unverifiable claims." delay="delay-2" />
-        <SummaryCard icon={Clock3} label="Freshest evidence" value={getFreshestEvidence(session.results)} helper="Newest publication date found." delay="delay-3" />
-        <SummaryCard icon={CheckCircle2} label="Time-sensitive" value={stats.timeSensitiveCount} helper="Claims needing recency care." delay="delay-4" />
+      <div className="glass-card border-white/5 bg-neutral-900/40 px-8 py-8 sm:px-10">
+        <div className="grid grid-cols-2 gap-8 md:grid-cols-4 lg:gap-12">
+          <StatItem icon={CheckCircle2} label="TRUE" value={stats.counts.TRUE} colorClass="text-emerald-400" />
+          <StatItem icon={AlertCircle} label="FALSE" value={stats.counts.FALSE} colorClass="text-rose-400" />
+          <StatItem icon={Clock} label="NEEDS REVIEW" value={stats.unresolvedCount} colorClass="text-amber-400" />
+          <StatItem icon={Clock} label="FRESHNESS" value={getFreshestEvidence(session.results)} />
+        </div>
       </div>
     </section>
   );

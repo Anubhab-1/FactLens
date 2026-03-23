@@ -1,0 +1,70 @@
+
+> factlens-frontend@0.0.0 test:e2e
+> playwright test
+
+
+Running 3 tests using 3 workers
+
+  ✘  2 e2e\app-smoke.spec.js:359:1 › workspace review flow renders extraction and authenticity panels (36.0s)
+  ✘  1 e2e\app-smoke.spec.js:419:1 › report page recalculates a claim after manual source review (36.0s)
+  ✘  3 e2e\app-smoke.spec.js:445:1 › history actions stay usable on mobile without horizontal overflow (1.1m)
+
+
+  1) e2e\app-smoke.spec.js:359:1 › workspace review flow renders extraction and authenticity panels 
+
+    [31mTest timeout of 30000ms exceeded.[39m
+
+    Error: page.goto: net::ERR_ABORTED; maybe frame was detached?
+    Call log:
+    [2m  - navigating to "http://127.0.0.1:4175/workspace", waiting until "load"[22m
+
+
+      404 |
+      405 |   await installMockApi(page, state);
+    > 406 |   await page.goto("/workspace");
+          |              ^
+      407 |
+      408 |   await page
+      409 |     .getByPlaceholder("Paste an article, transcript, or social post to extract and verify its claims.")
+        at c:\Users\anubhab samanta\OneDrive\Documents\Desktop\FactLens\factlens\frontend\e2e\app-smoke.spec.js:406:14
+
+  2) e2e\app-smoke.spec.js:419:1 › report page recalculates a claim after manual source review ─────
+
+    [31mTest timeout of 30000ms exceeded.[39m
+
+    Error: page.goto: net::ERR_ABORTED; maybe frame was detached?
+    Call log:
+    [2m  - navigating to "http://127.0.0.1:4175/report/report-qa", waiting until "load"[22m
+
+
+      424 |
+      425 |   await installMockApi(page, state);
+    > 426 |   await page.goto("/report/report-qa");
+          |              ^
+      427 |
+      428 |   await expect(page.getByRole("heading", { name: /Source stance override/i })).toBeVisible();
+      429 |   await expect(page.getByText("TRUE: 1")).toBeVisible();
+        at c:\Users\anubhab samanta\OneDrive\Documents\Desktop\FactLens\factlens\frontend\e2e\app-smoke.spec.js:426:14
+
+  3) e2e\app-smoke.spec.js:445:1 › history actions stay usable on mobile without horizontal overflow 
+
+    [31mTest timeout of 60000ms exceeded.[39m
+
+    Error: page.goto: net::ERR_ABORTED; maybe frame was detached?
+    Call log:
+    [2m  - navigating to "http://127.0.0.1:4175/history", waiting until "load"[22m
+
+
+      456 |     window.confirm = () => true;
+      457 |   });
+    > 458 |   await page.goto("/history");
+          |              ^
+      459 |
+      460 |   await expect(page.getByRole("heading", { name: /Saved analyses/i })).toBeVisible();
+      461 |   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
+        at c:\Users\anubhab samanta\OneDrive\Documents\Desktop\FactLens\factlens\frontend\e2e\app-smoke.spec.js:458:14
+
+  3 failed
+    e2e\app-smoke.spec.js:359:1 › workspace review flow renders extraction and authenticity panels ─
+    e2e\app-smoke.spec.js:419:1 › report page recalculates a claim after manual source review ──────
+    e2e\app-smoke.spec.js:445:1 › history actions stay usable on mobile without horizontal overflow 

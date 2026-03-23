@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -17,6 +18,31 @@ from storage.reports import (
 
 
 class ReportStorageTests(unittest.TestCase):
+    def test_database_url_override_uses_configured_sqlite_url(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_root = Path(temp_dir)
+            db_path = temp_root / "override.db"
+            legacy_dir = temp_root / "legacy"
+            database_url = f"sqlite:///{db_path.as_posix()}"
+
+            with patch.dict(os.environ, {"FACTLENS_DATABASE_URL": database_url}, clear=False):
+                with patch("storage.reports.LEGACY_REPORTS_DIR", legacy_dir):
+                    with patch("storage.reports._ENGINE_CACHE", {}):
+                        with patch("storage.reports._TABLE_CACHE", {}):
+                            with patch("storage.reports._SCHEMA_READY_DATABASES", set()):
+                                with patch("storage.reports._MIGRATED_DATABASES", set()):
+                                    report = build_report_record(
+                                        "text",
+                                        "Configured database URL",
+                                        report_id="report-db-url",
+                                        owner_session_id="owner-a",
+                                    )
+                                    save_report(report)
+                                    persisted = get_report("report-db-url", owner_session_id="owner-a")
+
+        self.assertIsNotNone(persisted)
+        self.assertEqual(persisted["id"], "report-db-url")
+
     def test_save_and_get_report_round_trip(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_root = Path(temp_dir)
@@ -42,6 +68,77 @@ class ReportStorageTests(unittest.TestCase):
         self.assertEqual(persisted["id"], "report-test")
         self.assertEqual(persisted["status"], "done")
         self.assertEqual(len(persisted["claims"]), 1)
+
+    def test_save_report_persists_evaluation_diagnostics(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_root = Path(temp_dir)
+            db_path = temp_root / "reports.db"
+            legacy_dir = temp_root / "legacy"
+
+            with patch("storage.reports.REPORTS_DB_PATH", db_path):
+                with patch("storage.reports.LEGACY_REPORTS_DIR", legacy_dir):
+                    with patch("storage.reports._MIGRATED_DATABASES", set()):
+                        report = build_report_record(
+                            "text",
+                            "The current CEO of ExampleCorp is Jane Doe.",
+                            report_id="report-eval",
+                            owner_session_id="owner-a",
+                        )
+                        report["status"] = "done"
+                        report["claim_extraction"] = {
+                            "mode": "manual_review",
+                            "source_mode": "heuristic",
+                            "provider_label": "NVIDIA",
+                            "warnings": ["Claims were manually reviewed before verification."],
+                            "claim_count": 1,
+                        }
+                        report["claims"] = [
+                            {
+                                "id": "1",
+                                "claim": "The current CEO of ExampleCorp is Jane Doe.",
+                                "time_sensitive": True,
+                            }
+                        ]
+                        report["results"] = [
+                            {
+                                "claim_id": "1",
+                                "claim": "The current CEO of ExampleCorp is Jane Doe.",
+                                "time_sensitive": True,
+                                "verdict": "UNVERIFIABLE",
+                                "confidence": 0.48,
+                                "conflict_detected": True,
+                                "risk_flags": ["Reflection Auditor corrected the initial verdict: current evidence is stale."],
+                                "subclaim_results": [{"subclaim_id": "1-sub1", "claim": "CEO is Jane Doe."}],
+                                "manual_override": {"active": True},
+                                "retrieval_summary": {
+                                    "source_count": 2,
+                                    "independent_source_count": 2,
+                                    "primary_source_count": 1,
+                                    "query_attempt_count": 4,
+                                    "failed_query_count": 1,
+                                    "recovery_triggered": True,
+                                    "recovery_strategy": "heuristic_after_llm",
+                                },
+                                "conflict_summary": {
+                                    "contradiction_types": [
+                                        {"id": "date_drift", "label": "Date drift"},
+                                        {"id": "entity_mismatch", "label": "Entity mismatch"},
+                                    ]
+                                },
+                            }
+                        ]
+                        save_report(report)
+                        persisted = get_report("report-eval", owner_session_id="owner-a")
+
+        self.assertIsNotNone(persisted["evaluation"])
+        self.assertEqual(persisted["evaluation"]["summary"]["verified_claims"], 1)
+        self.assertEqual(persisted["evaluation"]["extraction"]["mode"], "manual_review")
+        self.assertEqual(persisted["evaluation"]["retrieval"]["recovery_triggered_claim_count"], 1)
+        self.assertEqual(persisted["evaluation"]["verification"]["manual_override_claim_count"], 1)
+        self.assertEqual(
+            persisted["evaluation"]["verification"]["top_contradiction_type"]["id"],
+            "date_drift",
+        )
 
     def test_list_reports_returns_newest_first(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

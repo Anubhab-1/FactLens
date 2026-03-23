@@ -1,0 +1,71 @@
+=== FACTLENS PIPELINE DIAGNOSTICS ===
+
+--- Running Test: Simple True Claim ---
+Input Text: The capital of France is Paris.
+Extracting claims...
+Extracted 1 claims:
+  - [entity] The capital of France is Paris.
+
+Processing Claim: The capital of France is Paris.
+Retrieving evidence...
+Retrieved 4 sources.
+Verifying claim...
+VERDICT: TRUE
+CONFIDENCE: 0.88
+REASONING: High-quality sources consistently support the claim, and the weighted support score (1.71) clearly exceeds conflicting evidence.
+RISK FLAGS:
+  ! Most relevant sources trace back to the same source network.
+
+========================================
+
+--- Running Test: Simple False Claim ---
+Input Text: The capital of France is Lyon.
+Extracting claims...
+Extracted 1 claims:
+  - [entity] The capital of France is Lyon.
+
+Processing Claim: The capital of France is Lyon.
+Retrieving evidence...
+Retrieved 3 sources.
+Verifying claim...
+VERDICT: PARTIALLY_TRUE
+CONFIDENCE: 0.5
+REASONING: The evidence is mixed: some sources support important parts of the claim while others contradict or qualify it, so the result is only partially reliable.
+RISK FLAGS:
+  ! LLM and heuristic source assessment disagreed on 1 of 3 compared sources.
+  ! Heuristic cross-check resolved this claim as TRUE, so FactLens lowered confidence in the primary verdict.
+  ! Reflection Auditor suggested FALSE, but FactLens kept the calibrated verdict because the direct evidence was not strong enough.
+
+========================================
+
+--- Running Test: Compound Partially True Claim ---
+Input Text: Paris is the capital of France and London is the capital of Japan.
+Extracting claims...
+Extracted 2 claims:
+  - [entity] Paris is the capital of France
+  - [entity] London is the capital of Japan
+
+Processing Claim: Paris is the capital of France
+Retrieving evidence...
+Retrieved 6 sources.
+Verifying claim...
+VERDICT: TRUE
+CONFIDENCE: 0.93
+REASONING: High-quality sources consistently support the claim, and the weighted support score (2.56) clearly exceeds conflicting evidence.
+RISK FLAGS:
+  ! Most relevant sources trace back to the same source network.
+
+Processing Claim: London is the capital of Japan
+Retrieving evidence...
+Retrieved 2 sources.
+Verifying claim...
+VERDICT: UNVERIFIABLE
+CONFIDENCE: 0.29
+REASONING: The retrieved sources were too weak, too sparse, or too conflicting to justify a firmer verdict.
+RISK FLAGS:
+  ! No relevant evidence survived stance filtering.
+  ! The verdict relies on sparse evidence coverage.
+  ! Reflection Auditor suggested FALSE, but FactLens kept the calibrated verdict because the direct evidence was not strong enough.
+
+========================================
+

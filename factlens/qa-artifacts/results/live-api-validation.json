@@ -1,0 +1,184 @@
+{
+  "generated_at": "2026-03-22T11:29:55.017705+00:00",
+  "api_origin": "http://127.0.0.1:8000",
+  "status": "failed",
+  "scenarios": {
+    "text_input": {
+      "draft_status_code": 200,
+      "draft_claim_count": 3,
+      "review_required": false,
+      "report_id": "report-20260322112958-17b5ce",
+      "event_types": [
+        "report_created",
+        "source_text_ready",
+        "ai_detection_result",
+        "extracting_start",
+        "extracting_done",
+        "retrieving_start",
+        "retrieving_progress",
+        "retrieving_progress",
+        "retrieving_progress",
+        "verifying_start",
+        "verifying_progress",
+        "verifying_status",
+        "verifying_progress",
+        "verifying_status",
+        "verifying_progress",
+        "verifying_status",
+        "done"
+      ],
+      "result_count": 3,
+      "viewer_can_manage": true,
+      "first_result": {
+        "claim_id": "1",
+        "claim": "The Pacific Ocean is the largest ocean on Earth.",
+        "verdict": "UNVERIFIABLE",
+        "confidence": 0.0,
+        "conflict_detected": false,
+        "supporting_count": 0,
+        "conflicting_count": 0,
+        "mixed_count": 0,
+        "neutral_count": 0,
+        "risk_flags": [
+          "No evidence could be retrieved for this claim.",
+          "Retrieval warning: Exception('Error 432: '); fallback search failed: HTTP Error 403: Forbidden; Exception('Error 432: '); fallback search failed: HTTP Error 403: Forbidden; Exception('Error 432: '); fallback search failed: HTTP Error 403: Forbidden; Exception('Error 432: '); fallback search failed: HTTP Error 403: Forbidden; Exception('Error 432: '); fallback search failed: HTTP Error 403: Forbidden; Exception('Error 432: '); fallback search failed: HTTP Error 403: Forbidden"
+        ],
+        "manual_override": null
+      }
+    },
+    "url_input": {
+      "selected": null,
+      "attempts": [
+        {
+          "url": "https://en.wikipedia.org/wiki/Paris",
+          "status_code": 200,
+          "claim_count": 0,
+          "review_required": false,
+          "source_capture_mode": "http",
+          "source_capture_title": null,
+          "source_text_truncated": true
+        },
+        {
+          "url": "https://simple.wikipedia.org/wiki/Paris",
+          "status_code": 200,
+          "claim_count": 0,
+          "review_required": false,
+          "source_capture_mode": "http",
+          "source_capture_title": null,
+          "source_text_truncated": false
+        },
+        {
+          "url": "https://en.wikipedia.org/wiki/Eiffel_Tower",
+          "status_code": 200,
+          "claim_count": 0,
+          "review_required": false,
+          "source_capture_mode": "http",
+          "source_capture_title": null,
+          "source_text_truncated": true
+        }
+      ]
+    },
+    "conflicting_evidence": {
+      "selected": null,
+      "attempts": [
+        {
+          "claim_text": "The Eiffel Tower is 330 meters tall.",
+          "report_id": "report-20260322113243-0cc938",
+          "claim_id": "1",
+          "claim": "The Eiffel Tower is 330 meters tall.",
+          "verdict": "UNVERIFIABLE",
+          "confidence": 0.0,
+          "conflict_detected": false,
+          "supporting_count": 0,
+          "conflicting_count": 0,
+          "mixed_count": 0,
+          "neutral_count": 0,
+          "risk_flags": [
+            "No evidence could be retrieved for this claim.",
+            "Retrieval warning: Exception('Error 432: '); fallback search failed: HTTP Error 403: Forbidden; Exception('Error 432: '); fallback search failed: HTTP Error 403: Forbidden; Exception('Error 432: '); fallback search failed: HTTP Error 403: Forbidden; Exception('Error 432: '); fallback search failed: HTTP Error 403: Forbidden; Exception('Error 432: '); fallback search failed: HTTP Error 403: Forbidden; Exception('Error 432: '); fallback search failed: HTTP Error 403: Forbidden"
+          ],
+          "manual_override": null
+        },
+        {
+          "claim_text": "Mount Everest is 8848 meters tall.",
+          "report_id": "report-20260322113255-68cc2c",
+          "claim_id": "1",
+          "claim": "Mount Everest is 8848 meters tall.",
+          "verdict": "UNVERIFIABLE",
+          "confidence": 0.0,
+          "conflict_detected": false,
+          "supporting_count": 0,
+          "conflicting_count": 0,
+          "mixed_count": 0,
+          "neutral_count": 0,
+          "risk_flags": [
+            "No evidence could be retrieved for this claim.",
+            "Retrieval warning: Exception('Error 432: '); fallback search failed: HTTP Error 403: Forbidden; Exception('Error 432: '); fallback search failed: HTTP Error 403: Forbidden; Exception('Error 432: '); fallback search failed: HTTP Error 403: Forbidden; Exception('Error 432: '); fallback search failed: HTTP Error 403: Forbidden; Exception('Error 432: '); fallback search failed: HTTP Error 403: Forbidden; Exception('Error 432: '); fallback search failed: HTTP Error 403: Forbidden"
+          ],
+          "manual_override": null
+        },
+        {
+          "claim_text": "The Amazon River is the longest river in the world.",
+          "report_id": "report-20260322113308-802b4b",
+          "claim_id": "1",
+          "claim": "The Amazon River is the longest river in the world.",
+          "verdict": "UNVERIFIABLE",
+          "confidence": 0.0,
+          "conflict_detected": false,
+          "supporting_count": 0,
+          "conflicting_count": 0,
+          "mixed_count": 0,
+          "neutral_count": 0,
+          "risk_flags": [
+            "No evidence could be retrieved for this claim.",
+            "Retrieval warning: Exception('Error 432: '); fallback search failed: HTTP Error 403: Forbidden; Exception('Error 432: '); fallback search failed: HTTP Error 403: Forbidden; Exception('Error 432: '); fallback search failed: HTTP Error 403: Forbidden; Exception('Error 432: '); fallback search failed: HTTP Error 403: Forbidden"
+          ],
+          "manual_override": null
+        },
+        {
+          "claim_text": "Pluto is the ninth planet in the solar system.",
+          "report_id": "report-20260322113320-6daace",
+          "claim_id": "1",
+          "claim": "Pluto is the ninth planet in the solar system.",
+          "verdict": "UNVERIFIABLE",
+          "confidence": 0.0,
+          "conflict_detected": false,
+          "supporting_count": 0,
+          "conflicting_count": 0,
+          "mixed_count": 0,
+          "neutral_count": 0,
+          "risk_flags": [
+            "No evidence could be retrieved for this claim."
+          ],
+          "manual_override": null
+        }
+      ]
+    },
+    "export_share": {
+      "report_id": "report-20260322112958-17b5ce",
+      "share_token_present": true,
+      "owner_json_export": {
+        "status_code": 200,
+        "content_type": null,
+        "content_length": 16230
+      },
+      "owner_pdf_export": {
+        "status_code": 200,
+        "content_type": null,
+        "content_length": 7941
+      },
+      "shared_detail_status_code": 200,
+      "shared_viewer_can_manage": false,
+      "shared_export_status_code": 200,
+      "unauthorized_detail_status_code": 404,
+      "unauthorized_detail_visible": false
+    }
+  },
+  "health": {
+    "status_code": 200,
+    "body": {
+      "status": "ok"
+    }
+  },
+  "error": "Report result does not contain any overrideable sources."
+}

@@ -1,0 +1,422 @@
+=== FACTLENS PIPELINE DIAGNOSTICS ===
+
+--- Running Test: Simple False Claim (Lyon) ---
+Input Text: The capital of France is Lyon.
+Extracting claims...
+Extracted 1 claims:
+  - [entity] The capital of France is Lyon.
+
+Processing Claim: The capital of France is Lyon.
+Retrieving evidence...
+Retrieved 3 sources.
+Verifying claim...
+VERDICT: FALSE
+CONFIDENCE: 0.56
+REASONING: The strongest available evidence contradicts the claim, and the weighted conflict score (0.68) clearly dominates.
+--- DEBUG RESULT (EXCL EVIDENCE) ---
+{
+  "claim_id": "1",
+  "claim": "The capital of France is Lyon.",
+  "claim_type": "entity",
+  "time_sensitive": false,
+  "claim_requires_recency": false,
+  "verdict": "FALSE",
+  "confidence": 0.56,
+  "reasoning": "The strongest available evidence contradicts the claim, and the weighted conflict score (0.68) clearly dominates.",
+  "reasoning_steps": [],
+  "self_reflection": "",
+  "supporting_sources": [],
+  "conflicting_sources": [
+    "https://en.wikipedia.org/wiki/Rh%C3%B4ne-Alpes"
+  ],
+  "conflict_detected": true,
+  "conflict_summary": {
+    "summary": "Supporting and conflicting sources disagree mainly because of entity mismatch, scope mismatch. Supporting evidence is newest on 2026-02-24, while conflicting evidence is newest on 2026-03-12.",
+    "drivers": [
+      "entity mismatch",
+      "scope mismatch"
+    ],
+    "contradiction_types": [
+      {
+        "id": "entity_mismatch",
+        "label": "Entity mismatch",
+        "summary": "The disagreement centers on a different person, place, organization, or named entity."
+      },
+      {
+        "id": "scope_mismatch",
+        "label": "Scope mismatch",
+        "summary": "Sources agree on part of the claim but differ on qualifiers, conditions, or causal scope."
+      }
+    ],
+    "primary_contradiction_type": "entity_mismatch",
+    "supporting_count": 0,
+    "conflicting_count": 1,
+    "mixed_count": 1,
+    "supporting_newest": "2026-02-24",
+    "conflicting_newest": "2026-03-12",
+    "supporting_avg_authority": 0.74,
+    "conflicting_avg_authority": 0.74
+  },
+  "confidence_breakdown": {
+    "evidence_coverage": 0.5,
+    "source_quality": 0.67,
+    "freshness": 0.9,
+    "clarity": 0.49,
+    "support_score": 0.19,
+    "conflict_score": 0.68,
+    "independent_sources": 1,
+    "cross_check_agreement": 0.33
+  },
+  "risk_flags": [
+    "Most relevant sources trace back to the same source network.",
+    "LLM and heuristic source assessment disagreed on 2 of 3 compared sources.",
+    "Heuristic cross-check resolved this claim as TRUE, so FactLens lowered confidence in the primary verdict."
+  ],
+  "query_variants": [
+    {
+      "query": "capital of France",
+      "objective": "direct",
+      "phase": "primary",
+      "planner": "llm",
+      "provider_attempts": [
+        {
+          "provider": "tavily",
+          "status": "error",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": false,
+          "error": "Exception('Error 432: ')"
+        },
+        {
+          "provider": "wikipedia",
+          "status": "ok",
+          "result_count": 3,
+          "added_source_count": 1,
+          "fallback_used": true
+        }
+      ],
+      "status": "ok",
+      "result_count": 3,
+      "provider": "wikipedia",
+      "fallback_used": true,
+      "added_source_count": 1,
+      "warning": "Exception('Error 432: ')"
+    },
+    {
+      "query": "official capital of France government website",
+      "objective": "authoritative",
+      "phase": "primary",
+      "planner": "llm",
+      "provider_attempts": [
+        {
+          "provider": "tavily",
+          "status": "error",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": false,
+          "error": "Exception('Error 432: ')"
+        },
+        {
+          "provider": "wikipedia",
+          "status": "ok",
+          "result_count": 3,
+          "added_source_count": 0,
+          "fallback_used": true
+        },
+        {
+          "provider": "duckduckgo_html",
+          "status": "empty",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": true,
+          "warning": "duckduckgo_html returned no results."
+        },
+        {
+          "provider": "bing_html",
+          "status": "ok",
+          "result_count": 1,
+          "added_source_count": 0,
+          "fallback_used": true
+        }
+      ],
+      "status": "ok",
+      "result_count": 3,
+      "provider": "wikipedia",
+      "fallback_used": true,
+      "added_source_count": 0,
+      "warning": "Exception('Error 432: '); duckduckgo_html returned no results."
+    },
+    {
+      "query": "is Lyon the capital of France",
+      "objective": "recency",
+      "phase": "primary",
+      "planner": "llm",
+      "provider_attempts": [
+        {
+          "provider": "tavily",
+          "status": "error",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": false,
+          "error": "Exception('Error 432: ')"
+        },
+        {
+          "provider": "wikipedia",
+          "status": "ok",
+          "result_count": 3,
+          "added_source_count": 1,
+          "fallback_used": true
+        }
+      ],
+      "status": "ok",
+      "result_count": 3,
+      "provider": "wikipedia",
+      "fallback_used": true,
+      "added_source_count": 1,
+      "warning": "Exception('Error 432: ')"
+    },
+    {
+      "query": "Lyon not capital of France",
+      "objective": "contradiction",
+      "phase": "primary",
+      "planner": "llm",
+      "provider_attempts": [
+        {
+          "provider": "tavily",
+          "status": "error",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": false,
+          "error": "Exception('Error 432: ')"
+        },
+        {
+          "provider": "wikipedia",
+          "status": "ok",
+          "result_count": 3,
+          "added_source_count": 0,
+          "fallback_used": true
+        },
+        {
+          "provider": "duckduckgo_html",
+          "status": "empty",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": true,
+          "warning": "duckduckgo_html returned no results."
+        },
+        {
+          "provider": "bing_html",
+          "status": "error",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": true,
+          "warning": "bing_html request timed out",
+          "error": "Timeout"
+        }
+      ],
+      "status": "ok",
+      "result_count": 3,
+      "provider": "wikipedia",
+      "fallback_used": true,
+      "added_source_count": 0,
+      "warning": "Exception('Error 432: '); duckduckgo_html returned no results.; Timeout"
+    },
+    {
+      "query": "official capital of France government website .fr",
+      "objective": "authoritative",
+      "phase": "recovery",
+      "planner": "llm",
+      "provider_attempts": [
+        {
+          "provider": "tavily",
+          "status": "error",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": false,
+          "warning": "tavily circuit breaker is open due to repeated failures",
+          "error": "Circuit breaker open"
+        },
+        {
+          "provider": "wikipedia",
+          "status": "ok",
+          "result_count": 3,
+          "added_source_count": 0,
+          "fallback_used": true
+        },
+        {
+          "provider": "duckduckgo_html",
+          "status": "empty",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": true,
+          "warning": "duckduckgo_html returned no results."
+        },
+        {
+          "provider": "bing_html",
+          "status": "ok",
+          "result_count": 1,
+          "added_source_count": 0,
+          "fallback_used": true
+        }
+      ],
+      "status": "ok",
+      "result_count": 3,
+      "provider": "wikipedia",
+      "fallback_used": true,
+      "added_source_count": 0,
+      "warning": "Circuit breaker open; duckduckgo_html returned no results."
+    },
+    {
+      "query": "capital of France - Lyon",
+      "objective": "contradiction",
+      "phase": "recovery",
+      "planner": "llm",
+      "provider_attempts": [
+        {
+          "provider": "tavily",
+          "status": "error",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": false,
+          "warning": "tavily circuit breaker is open due to repeated failures",
+          "error": "Circuit breaker open"
+        },
+        {
+          "provider": "wikipedia",
+          "status": "ok",
+          "result_count": 3,
+          "added_source_count": 1,
+          "fallback_used": true
+        }
+      ],
+      "status": "ok",
+      "result_count": 3,
+      "provider": "wikipedia",
+      "fallback_used": true,
+      "added_source_count": 1,
+      "warning": "Circuit breaker open"
+    },
+    {
+      "query": "France capital city official source",
+      "objective": "authoritative",
+      "phase": "recovery",
+      "planner": "llm",
+      "provider_attempts": [
+        {
+          "provider": "tavily",
+          "status": "error",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": false,
+          "warning": "tavily circuit breaker is open due to repeated failures",
+          "error": "Circuit breaker open"
+        },
+        {
+          "provider": "wikipedia",
+          "status": "ok",
+          "result_count": 3,
+          "added_source_count": 0,
+          "fallback_used": true
+        },
+        {
+          "provider": "duckduckgo_html",
+          "status": "empty",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": true,
+          "warning": "duckduckgo_html returned no results."
+        },
+        {
+          "provider": "bing_html",
+          "status": "ok",
+          "result_count": 3,
+          "added_source_count": 0,
+          "fallback_used": true
+        }
+      ],
+      "status": "ok",
+      "result_count": 3,
+      "provider": "wikipedia",
+      "fallback_used": true,
+      "added_source_count": 0,
+      "warning": "Circuit breaker open; duckduckgo_html returned no results."
+    }
+  ],
+  "retrieval_summary": {
+    "source_count": 3,
+    "authoritative_count": 0,
+    "recent_count": 3,
+    "dated_count": 3,
+    "distinct_domain_count": 1,
+    "independent_source_count": 1,
+    "official_source_count": 0,
+    "first_party_count": 0,
+    "primary_source_count": 3,
+    "source_origin_breakdown": {
+      "reference": 3
+    },
+    "freshest_date": "2026-03-12",
+    "domains": [
+      "en.wikipedia.org"
+    ],
+    "query_attempt_count": 7,
+    "failed_query_count": 0,
+    "recovery_triggered": true,
+    "recovery_query_count": 3,
+    "recovery_reason": [
+      "Evidence diversity is too narrow."
+    ],
+    "recovery_strategy": "llm_planner",
+    "recovery_planner_notes": "The current evidence is insufficient to prove or disprove the claim with 100% confidence. The sources are low relevance and lack authoritative support. The evidence snapshot does not provide a clear answer to the claim, and the sources are mostly related to Wikipedia, which is not considered an authoritative source for this type of information. Furthermore, the primary queries did not yield any direct or contradictory evidence.",
+    "recovery_fallback_used": false
+  },
+  "temporal_context": {
+    "status": "dated_but_not_required",
+    "requires_recency": false,
+    "dated_source_count": 2,
+    "freshest_date": "2026-03-12",
+    "oldest_date": "2026-02-24",
+    "summary": "Dated evidence was available through 2026-03-12, although this claim is not strongly time-sensitive."
+  },
+  "base_source_assessments": [
+    {
+      "source_id": "S1",
+      "url": "https://en.wikipedia.org/wiki/Rh%C3%B4ne-Alpes",
+      "stance": "CONFLICT",
+      "strength": 0.6533333333333333,
+      "summary": "Multiple assessments: Source S1 mentions Lyon as the capital of Rh\u00f4ne-Alpes, but also mentions Paris as the largest metropolitan area in France, implying Paris is the capital.; Source S1 mentions Lyon as the capital of Rh\u00f4ne-Alpes, but also mentions Paris as the largest metropolitan area in France, implying Paris is the capital.",
+      "snippet_used": "Its capital, Lyon, is the second-largest metropolitan area in France after Paris."
+    },
+    {
+      "source_id": "S2",
+      "url": "https://en.wikipedia.org/wiki/Lyon",
+      "stance": "MIXED",
+      "strength": 0.47333333333333333,
+      "summary": "Multiple assessments: Source S2 mentions Lyon as the 'Capital of Lights' due to its light festival, but this is a nickname and not an official designation as the capital of France.; Source S2 mentions Lyon as the 'Capital of Lights' due to its light festival, but this is a nickname and not an official designation as the capital of France.",
+      "snippet_used": "The every 8 December and lasts for four days, earning Lyon the title of 'Capital of Lights'."
+    },
+    {
+      "source_id": "S3",
+      "url": "https://en.wikipedia.org/wiki/Capital_punishment_in_France",
+      "stance": "IRRELEVANT",
+      "strength": 0.45,
+      "summary": "Multiple assessments: Source S3 does not provide any information about the capital of France.; Source S3 does not provide any relevant information about the capital of France.",
+      "snippet_used": "Capital punishment in France (French: peine de mort en France) is banned by Article 66-1 of the Constitution of the French Republic..."
+    }
+  ],
+  "manual_override": null,
+  "subclaim_results": [],
+  "subclaim_summary": {
+    "count": 0,
+    "mixed_support": false,
+    "verdict_breakdown": {},
+    "synthesis_note": ""
+  }
+}
+RISK FLAGS:
+  ! Most relevant sources trace back to the same source network.
+  ! LLM and heuristic source assessment disagreed on 2 of 3 compared sources.
+  ! Heuristic cross-check resolved this claim as TRUE, so FactLens lowered confidence in the primary verdict.
+
+========================================
+

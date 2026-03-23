@@ -77,6 +77,21 @@ function AccuracyReport({ results, claims }) {
     ? Math.round((sourceTotals.dated / sourceTotals.sources) * 100)
     : 0;
 
+  // Weighted credibility score: TRUE=1.0, PARTIALLY_TRUE=0.5, UNVERIFIABLE=0.2, FALSE=0
+  const credibilityScore = verifiedCount
+    ? Math.round(
+        ((counts.TRUE * 1.0 + counts.PARTIALLY_TRUE * 0.5 + counts.UNVERIFIABLE * 0.2) / verifiedCount) *
+          (avgConfidence / 100) *
+          100,
+      )
+    : 0;
+  const credibilityColor =
+    credibilityScore >= 70
+      ? { text: "text-emerald-300", badge: "bg-emerald-500/12 ring-1 ring-inset ring-emerald-400/20 text-emerald-200", label: "High credibility" }
+      : credibilityScore >= 40
+      ? { text: "text-amber-300", badge: "bg-amber-500/12 ring-1 ring-inset ring-amber-400/20 text-amber-200", label: "Moderate credibility" }
+      : { text: "text-rose-300", badge: "bg-rose-500/12 ring-1 ring-inset ring-rose-400/20 text-rose-200", label: "Low credibility" };
+
   return (
     <section className="glass-card-static rounded-[2rem] p-4 animate-fade-in-up gradient-border sm:p-6">
       <div className="flex flex-col gap-5">
@@ -88,10 +103,19 @@ function AccuracyReport({ results, claims }) {
           </p>
         </div>
 
-        <div className="glass-card w-full rounded-[1.5rem] px-4 py-4 sm:px-5 lg:max-w-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Decisive verdicts</p>
-          <p className="mt-2 font-mono text-3xl font-semibold text-white sm:text-4xl">{decisiveRate}%</p>
-          <p className="mt-2 text-sm text-slate-400">Claims judged true or false.</p>
+        <div className="flex flex-col gap-4 sm:flex-row">
+          {verifiedCount > 0 ? (
+            <div className="glass-card rounded-[1.5rem] px-5 py-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Credibility score</p>
+              <p className={`mt-2 font-mono text-3xl font-semibold sm:text-4xl ${credibilityColor.text}`}>{credibilityScore}%</p>
+              <span className={`mt-2 inline-block rounded-full px-3 py-1 text-xs font-medium ${credibilityColor.badge}`}>{credibilityColor.label}</span>
+            </div>
+          ) : null}
+          <div className="glass-card rounded-[1.5rem] px-4 py-4 sm:px-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Decisive verdicts</p>
+            <p className="mt-2 font-mono text-3xl font-semibold text-white sm:text-4xl">{decisiveRate}%</p>
+            <p className="mt-2 text-sm text-slate-400">Claims judged true or false.</p>
+          </div>
         </div>
       </div>
 

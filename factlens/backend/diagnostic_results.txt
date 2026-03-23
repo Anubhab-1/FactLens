@@ -1,0 +1,77 @@
+=== FACTLENS PIPELINE DIAGNOSTICS ===
+
+--- Running Test: Simple True Claim ---
+Input Text: The capital of France is Paris.
+Extracting claims...
+Extracted 1 claims:
+  - [entity] The capital of France is Paris.
+
+Processing Claim: The capital of France is Paris.
+Retrieving evidence...
+Retrieved 6 sources.
+Verifying claim...
+VERDICT: TRUE
+CONFIDENCE: 0.93
+REASONING: High-quality sources consistently support the claim, and the weighted support score (2.78) clearly exceeds conflicting evidence.
+
+========================================
+
+--- Running Test: Simple False Claim ---
+Input Text: The capital of France is Lyon.
+Extracting claims...
+Extracted 1 claims:
+  - [entity] The capital of France is Lyon.
+
+Processing Claim: The capital of France is Lyon.
+Retrieving evidence...
+Retrieved 4 sources.
+Verifying claim...
+VERDICT: PARTIALLY_TRUE
+CONFIDENCE: 0.3
+REASONING: The evidence is mixed: some sources support important parts of the claim while others contradict or qualify it, so the result is only partially reliable.
+RISK FLAGS:
+  ! Credible sources disagree on at least part of the claim.
+  ! LLM and heuristic source assessment disagreed on 3 of 4 compared sources.
+  ! Heuristic cross-check resolved this claim as TRUE, so FactLens lowered confidence in the primary verdict.
+  ! Reflection Auditor suggested FALSE, but FactLens kept the calibrated verdict because the direct evidence was not strong enough.
+
+========================================
+
+--- Running Test: Compound Partially True Claim ---
+Input Text: Paris is the capital of France and London is the capital of Japan.
+Extracting claims...
+Extracted 2 claims:
+  - [entity] Paris is the capital of France
+  - [entity] London is the capital of Japan
+
+Processing Claim: Paris is the capital of France
+Retrieving evidence...
+Retrieved 7 sources.
+Verifying claim...
+VERDICT: TRUE
+CONFIDENCE: 0.92
+REASONING: High-quality sources consistently support the claim, and the weighted support score (3.34) clearly exceeds conflicting evidence.
+
+Processing Claim: London is the capital of Japan
+Retrieving evidence...
+Retrieved 4 sources.
+Verifying claim...
+Traceback (most recent call last):
+  File "diagnose_pipeline.py", line 66, in <module>
+    asyncio.run(run_diagnostics())
+  File "C:\Python38\lib\asyncio\runners.py", line 44, in run
+    return loop.run_until_complete(main)
+  File "C:\Python38\lib\asyncio\base_events.py", line 603, in run_until_complete
+    self.run_forever()
+  File "C:\Python38\lib\asyncio\windows_events.py", line 316, in run_forever
+    super().run_forever()
+  File "C:\Python38\lib\asyncio\base_events.py", line 570, in run_forever
+    self._run_once()
+  File "C:\Python38\lib\asyncio\base_events.py", line 1823, in _run_once
+    event_list = self._selector.select(timeout)
+  File "C:\Python38\lib\asyncio\windows_events.py", line 434, in select
+    self._poll(timeout)
+  File "C:\Python38\lib\asyncio\windows_events.py", line 783, in _poll
+    status = _overlapped.GetQueuedCompletionStatus(self._iocp, ms)
+KeyboardInterrupt
+^C

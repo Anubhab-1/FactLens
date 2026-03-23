@@ -2,22 +2,7 @@ export const EMPTY_PROGRESS = { done: 0, total: 0 };
 
 const STORAGE_KEY = "factlens:sessions";
 const MAX_SAVED_SESSIONS = 20;
-
-function interruptedStatus(session) {
-  if (session.status !== "running") {
-    return session.status || "done";
-  }
-
-  return "error";
-}
-
-function interruptedError(session) {
-  if (session.status !== "running") {
-    return session.error || null;
-  }
-
-  return session.error || "This analysis was interrupted before it finished.";
-}
+const INTERRUPTED_SESSION_ERROR = "This analysis was interrupted before it finished.";
 
 function isReportObject(rawSession) {
   return Boolean(rawSession?.schema_version || rawSession?.created_at || rawSession?.pipeline_stage);
@@ -38,11 +23,16 @@ function normalizeRawSession(rawSession) {
       lastUpdatedAt: rawSession.updated_at,
       inputMode: rawSession.input_mode,
       inputValue: rawSession.input_value,
+      sourceText: rawSession.source_text,
+      sourceTextTruncated: rawSession.source_text_truncated,
+      sourceCapture: rawSession.source_capture,
+      claimExtraction: rawSession.claim_extraction,
       pipelineStage: rawSession.pipeline_stage,
       claims: rawSession.claims,
       results: rawSession.results,
       aiDetection: rawSession.ai_detection,
       mediaDetection: rawSession.media_detection,
+      evaluation: rawSession.evaluation,
       error: rawSession.error,
       progress: rawSession.progress,
       isPinned: rawSession.is_pinned,
@@ -64,7 +54,7 @@ export function normalizeSession(rawSession) {
   return {
     id: normalized.id || `${Date.now()}`,
     reportId: normalized.reportId || normalized.report_id || null,
-    status: interruptedStatus(normalized),
+    status: normalized.status || "done",
     createdAt: normalized.createdAt || normalized.created_at || new Date().toISOString(),
     completedAt: normalized.completedAt || normalized.completed_at || null,
     lastUpdatedAt:
@@ -75,18 +65,46 @@ export function normalizeSession(rawSession) {
       new Date().toISOString(),
     inputMode: normalized.inputMode || normalized.input_mode || "text",
     inputValue: normalized.inputValue || normalized.input_value || "",
+    sourceText: normalized.sourceText || normalized.source_text || "",
+    sourceTextTruncated: Boolean(
+      normalized.sourceTextTruncated ?? normalized.source_text_truncated ?? false,
+    ),
+    sourceCapture: normalized.sourceCapture || normalized.source_capture || null,
+    claimExtraction: normalized.claimExtraction || normalized.claim_extraction || null,
     pipelineStage: normalized.pipelineStage || normalized.pipeline_stage || "idle",
     claims: Array.isArray(normalized.claims) ? normalized.claims : [],
     results: Array.isArray(normalized.results) ? normalized.results : [],
     aiDetection: normalized.aiDetection || normalized.ai_detection || null,
     mediaDetection: normalized.mediaDetection || normalized.media_detection || null,
-    error: interruptedError(normalized),
+    evaluation: normalized.evaluation || null,
+    error: normalized.error || null,
     progress: normalized.progress || EMPTY_PROGRESS,
     isPinned: Boolean(normalized.isPinned ?? normalized.is_pinned ?? false),
     isArchived: Boolean(normalized.isArchived ?? normalized.is_archived ?? false),
     shareToken: normalized.shareToken || normalized.share_token || null,
     canManage: Boolean(normalized.canManage ?? normalized.viewer_can_manage ?? normalized.reportId == null),
   };
+}
+
+function isPersistableStoredSession(rawSession) {
+  const normalized = normalizeRawSession(rawSession);
+  if (!normalized) {
+    return false;
+  }
+
+  // Running sessions cannot be resumed from local storage. Report-backed state
+  // will be restored from the backend, so keep storage focused on stable sessions.
+  if (normalized.status === "running") {
+    return false;
+  }
+
+  // Clean up stale synthetic errors written by older clients that converted any
+  // in-progress session into an interruption banner during persistence.
+  if (normalized.status === "error" && normalized.error === INTERRUPTED_SESSION_ERROR) {
+    return false;
+  }
+
+  return true;
 }
 
 function sessionKey(session) {
@@ -163,7 +181,7 @@ export function loadStoredSessions() {
       return [];
     }
 
-    return trimSessions(parsed);
+    return trimSessions(parsed.filter(isPersistableStoredSession));
   } catch {
     return [];
   }
@@ -189,6 +207,10 @@ export function createSession({ inputMode, inputValue }) {
     lastUpdatedAt: createdAt,
     inputMode,
     inputValue,
+    sourceText: "",
+    sourceTextTruncated: false,
+    sourceCapture: null,
+    claimExtraction: null,
     pipelineStage: inputMode === "url" ? "scraping" : "detecting",
     claims: [],
     results: [],

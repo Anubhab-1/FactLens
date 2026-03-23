@@ -1,0 +1,26 @@
+=== FACTLENS PIPELINE DIAGNOSTICS ===
+
+--- Running Test: Simple False Claim (Lyon) ---
+Input Text: The capital of France is Lyon.
+Extracting claims...
+Extracted 1 claims:
+  - [entity] The capital of France is Lyon.
+
+Processing Claim: The capital of France is Lyon.
+Retrieving evidence...
+Retrieved 3 sources.
+Verifying claim...
+Traceback (most recent call last):
+  File "diagnose_pipeline.py", line 64, in <module>
+    asyncio.run(run_diagnostics())
+  File "C:\Python38\lib\asyncio\runners.py", line 44, in run
+    return loop.run_until_complete(main)
+  File "C:\Python38\lib\asyncio\base_events.py", line 616, in run_until_complete
+    return future.result()
+  File "diagnose_pipeline.py", line 44, in run_diagnostics
+    result = await verify_claim(c, evidence)
+  File "C:\Users\anubhab samanta\OneDrive\Documents\Desktop\FactLens\factlens\backend\pipeline\verifier.py", line 1781, in verify_claim
+    calibration = calibrate_verdict(
+  File "C:\Users\anubhab samanta\OneDrive\Documents\Desktop\FactLens\factlens\backend\pipeline\scoring.py", line 1582, in calibrate_verdict
+    elif auditor_decision == "FALSE" and conflict_score >= 0.55 and conflict_score > (support_score * 1.4):
+NameError: name 'auditor_decision' is not defined

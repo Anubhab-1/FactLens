@@ -1,0 +1,1410 @@
+=== FACTLENS PIPELINE DIAGNOSTICS ===
+
+--- Running Test: Simple True Claim ---
+Input Text: The capital of France is Paris.
+Extracting claims...
+Extracted 1 claims:
+  - [entity] The capital of France is Paris.
+
+Processing Claim: The capital of France is Paris.
+Retrieving evidence...
+Retrieved 4 sources.
+Verifying claim...
+VERDICT: TRUE
+CONFIDENCE: 0.88
+REASONING: High-quality sources consistently support the claim, and the weighted support score (1.75) clearly exceeds conflicting evidence.
+--- DEBUG RESULT (EXCL EVIDENCE) ---
+{
+  "claim_id": "1",
+  "claim": "The capital of France is Paris.",
+  "claim_type": "entity",
+  "time_sensitive": false,
+  "claim_requires_recency": false,
+  "verdict": "TRUE",
+  "confidence": 0.88,
+  "reasoning": "High-quality sources consistently support the claim, and the weighted support score (1.75) clearly exceeds conflicting evidence.",
+  "reasoning_steps": [],
+  "self_reflection": "",
+  "supporting_sources": [
+    "https://en.wikipedia.org/wiki/Paris",
+    "https://en.wikipedia.org/wiki/Council_of_Paris",
+    "https://en.wikipedia.org/wiki/Mayor_of_Paris"
+  ],
+  "conflicting_sources": [],
+  "conflict_detected": false,
+  "conflict_summary": {
+    "summary": "",
+    "drivers": [],
+    "contradiction_types": [],
+    "primary_contradiction_type": "",
+    "supporting_count": 3,
+    "conflicting_count": 0,
+    "mixed_count": 0,
+    "supporting_newest": "unknown",
+    "conflicting_newest": "unknown",
+    "supporting_avg_authority": 0.0,
+    "conflicting_avg_authority": 0.0
+  },
+  "confidence_breakdown": {
+    "evidence_coverage": 0.75,
+    "source_quality": 0.71,
+    "freshness": 0.98,
+    "clarity": 1.0,
+    "support_score": 1.75,
+    "conflict_score": 0.0,
+    "independent_sources": 1,
+    "cross_check_agreement": 1.0
+  },
+  "risk_flags": [
+    "Most relevant sources trace back to the same source network."
+  ],
+  "query_variants": [
+    {
+      "query": "capital of France",
+      "objective": "direct",
+      "phase": "primary",
+      "planner": "llm",
+      "provider_attempts": [
+        {
+          "provider": "tavily",
+          "status": "error",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": false,
+          "error": "Exception('Error 432: ')"
+        },
+        {
+          "provider": "wikipedia",
+          "status": "ok",
+          "result_count": 3,
+          "added_source_count": 2,
+          "fallback_used": true
+        }
+      ],
+      "status": "ok",
+      "result_count": 3,
+      "provider": "wikipedia",
+      "fallback_used": true,
+      "added_source_count": 2,
+      "warning": "Exception('Error 432: ')"
+    },
+    {
+      "query": "official capital of France government website",
+      "objective": "authoritative",
+      "phase": "primary",
+      "planner": "llm",
+      "provider_attempts": [
+        {
+          "provider": "tavily",
+          "status": "error",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": false,
+          "error": "Exception('Error 432: ')"
+        },
+        {
+          "provider": "wikipedia",
+          "status": "ok",
+          "result_count": 3,
+          "added_source_count": 0,
+          "fallback_used": true
+        },
+        {
+          "provider": "duckduckgo_html",
+          "status": "empty",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": true,
+          "warning": "duckduckgo_html returned no results."
+        },
+        {
+          "provider": "bing_html",
+          "status": "ok",
+          "result_count": 1,
+          "added_source_count": 0,
+          "fallback_used": true
+        }
+      ],
+      "status": "ok",
+      "result_count": 3,
+      "provider": "wikipedia",
+      "fallback_used": true,
+      "added_source_count": 0,
+      "warning": "Exception('Error 432: '); duckduckgo_html returned no results."
+    },
+    {
+      "query": "is Paris still the capital of France",
+      "objective": "recency",
+      "phase": "primary",
+      "planner": "llm",
+      "provider_attempts": [
+        {
+          "provider": "tavily",
+          "status": "error",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": false,
+          "error": "Exception('Error 432: ')"
+        },
+        {
+          "provider": "wikipedia",
+          "status": "ok",
+          "result_count": 3,
+          "added_source_count": 0,
+          "fallback_used": true
+        },
+        {
+          "provider": "duckduckgo_html",
+          "status": "empty",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": true,
+          "warning": "duckduckgo_html returned no results."
+        },
+        {
+          "provider": "bing_html",
+          "status": "ok",
+          "result_count": 3,
+          "added_source_count": 0,
+          "fallback_used": true
+        }
+      ],
+      "status": "ok",
+      "result_count": 3,
+      "provider": "wikipedia",
+      "fallback_used": true,
+      "added_source_count": 0,
+      "warning": "Exception('Error 432: '); duckduckgo_html returned no results."
+    },
+    {
+      "query": "capital of France not Paris",
+      "objective": "contradiction",
+      "phase": "primary",
+      "planner": "llm",
+      "provider_attempts": [
+        {
+          "provider": "tavily",
+          "status": "error",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": false,
+          "error": "Exception('Error 432: ')"
+        },
+        {
+          "provider": "wikipedia",
+          "status": "ok",
+          "result_count": 3,
+          "added_source_count": 2,
+          "fallback_used": true
+        }
+      ],
+      "status": "ok",
+      "result_count": 3,
+      "provider": "wikipedia",
+      "fallback_used": true,
+      "added_source_count": 2,
+      "warning": "Exception('Error 432: ')"
+    }
+  ],
+  "retrieval_summary": {
+    "source_count": 4,
+    "authoritative_count": 0,
+    "recent_count": 4,
+    "dated_count": 4,
+    "distinct_domain_count": 1,
+    "independent_source_count": 1,
+    "official_source_count": 0,
+    "first_party_count": 0,
+    "primary_source_count": 4,
+    "source_origin_breakdown": {
+      "reference": 4
+    },
+    "freshest_date": "2026-03-23",
+    "domains": [
+      "en.wikipedia.org"
+    ],
+    "query_attempt_count": 4,
+    "failed_query_count": 0,
+    "recovery_triggered": false,
+    "recovery_query_count": 0,
+    "recovery_reason": [],
+    "recovery_strategy": "not_needed",
+    "recovery_planner_notes": "",
+    "recovery_fallback_used": false
+  },
+  "temporal_context": {
+    "status": "dated_but_not_required",
+    "requires_recency": false,
+    "dated_source_count": 3,
+    "freshest_date": "2026-03-23",
+    "oldest_date": "2026-03-22",
+    "summary": "Dated evidence was available through 2026-03-23, although this claim is not strongly time-sensitive."
+  },
+  "base_source_assessments": [
+    {
+      "source_id": "S1",
+      "url": "https://en.wikipedia.org/wiki/Paris",
+      "stance": "SUPPORT",
+      "strength": 1.0,
+      "summary": "Paris is the capital and largest city of France.",
+      "snippet_used": "Paris is the capital and largest city of France, with an estimated city population of 2.04 million in an area of 105.4 km2 (40.7 sq mi), and a metropolitan population of 13.2 million as of January 2026."
+    },
+    {
+      "source_id": "S2",
+      "url": "https://en.wikipedia.org/wiki/Council_of_Paris",
+      "stance": "SUPPORT",
+      "strength": 1.0,
+      "summary": "The Council of Paris is the deliberative body responsible for governing Paris, the capital of France.",
+      "snippet_used": "The Council of Paris (French: Conseil de Paris, [k\u0254\u0303s\u025bj d(\u0259) pa\u0281i]) is the deliberative body responsible for governing Paris, the capital of France."
+    },
+    {
+      "source_id": "S3",
+      "url": "https://en.wikipedia.org/wiki/Mayor_of_Paris",
+      "stance": "SUPPORT",
+      "strength": 1.0,
+      "summary": "The mayor of Paris is the chief executive of Paris, the capital and largest city in France.",
+      "snippet_used": "The mayor of Paris (French: Maire de Paris, [m\u025b\u0281 d(\u0259) pa\u0281i]) is the chief executive of Paris, the capital and largest city in France."
+    },
+    {
+      "source_id": "S4",
+      "url": "https://en.wikipedia.org/wiki/Capital_punishment_in_France",
+      "stance": "IRRELEVANT",
+      "strength": 0.0,
+      "summary": "Multiple assessments: This source does not provide relevant information about the capital of France.; This source is about capital punishment in France and does not provide relevant information about the capital of France.",
+      "snippet_used": "Capital punishment in France (French: peine de mort en France) is banned by Article 66-1 of the Constitution of the French Republic..."
+    }
+  ],
+  "manual_override": null,
+  "subclaim_results": [],
+  "subclaim_summary": {
+    "count": 0,
+    "mixed_support": false,
+    "verdict_breakdown": {},
+    "synthesis_note": ""
+  }
+}
+RISK FLAGS:
+  ! Most relevant sources trace back to the same source network.
+
+========================================
+
+--- Running Test: Simple False Claim ---
+Input Text: The capital of France is Lyon.
+Extracting claims...
+Extracted 1 claims:
+  - [entity] The capital of France is Lyon.
+
+Processing Claim: The capital of France is Lyon.
+Retrieving evidence...
+Retrieved 3 sources.
+Verifying claim...
+VERDICT: TRUE
+CONFIDENCE: 0.6
+REASONING: High-quality sources consistently support the claim, and the weighted support score (0.73) clearly exceeds conflicting evidence.
+--- DEBUG RESULT (EXCL EVIDENCE) ---
+{
+  "claim_id": "1",
+  "claim": "The capital of France is Lyon.",
+  "claim_type": "entity",
+  "time_sensitive": false,
+  "claim_requires_recency": false,
+  "verdict": "TRUE",
+  "confidence": 0.6,
+  "reasoning": "High-quality sources consistently support the claim, and the weighted support score (0.73) clearly exceeds conflicting evidence.",
+  "reasoning_steps": [],
+  "self_reflection": "",
+  "supporting_sources": [
+    "https://www.mappr.co/capital-cities/france/"
+  ],
+  "conflicting_sources": [],
+  "conflict_detected": false,
+  "conflict_summary": {
+    "summary": "Supporting and conflicting sources disagree mainly because of date drift, entity mismatch, scope mismatch. Supporting evidence is newest on 2024-03-13, while conflicting evidence is newest on 2026-03-23. The conflicting side has the higher average authority score.",
+    "drivers": [
+      "temporal drift",
+      "authority imbalance",
+      "entity mismatch",
+      "scope mismatch"
+    ],
+    "contradiction_types": [
+      {
+        "id": "date_drift",
+        "label": "Date drift",
+        "summary": "The evidence clusters around materially different dates or time windows."
+      },
+      {
+        "id": "entity_mismatch",
+        "label": "Entity mismatch",
+        "summary": "The disagreement centers on a different person, place, organization, or named entity."
+      },
+      {
+        "id": "scope_mismatch",
+        "label": "Scope mismatch",
+        "summary": "Sources agree on part of the claim but differ on qualifiers, conditions, or causal scope."
+      }
+    ],
+    "primary_contradiction_type": "date_drift",
+    "supporting_count": 1,
+    "conflicting_count": 0,
+    "mixed_count": 1,
+    "supporting_newest": "2024-03-13",
+    "conflicting_newest": "2026-03-23",
+    "supporting_avg_authority": 0.48,
+    "conflicting_avg_authority": 0.86
+  },
+  "confidence_breakdown": {
+    "evidence_coverage": 0.5,
+    "source_quality": 0.6,
+    "freshness": 0.98,
+    "clarity": 0.44,
+    "support_score": 0.73,
+    "conflict_score": 0.29,
+    "independent_sources": 2,
+    "cross_check_agreement": 0.33
+  },
+  "risk_flags": [
+    "LLM and heuristic source assessment disagreed on 2 of 3 compared sources.",
+    "Reflection Auditor suggested FALSE, but FactLens kept the calibrated verdict because the direct evidence was not strong enough."
+  ],
+  "query_variants": [
+    {
+      "query": "capital of France",
+      "objective": "direct",
+      "phase": "primary",
+      "planner": "llm",
+      "provider_attempts": [
+        {
+          "provider": "tavily",
+          "status": "error",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": false,
+          "warning": "tavily circuit breaker is open due to repeated failures",
+          "error": "Circuit breaker open"
+        },
+        {
+          "provider": "wikipedia",
+          "status": "ok",
+          "result_count": 3,
+          "added_source_count": 1,
+          "fallback_used": true
+        }
+      ],
+      "status": "ok",
+      "result_count": 3,
+      "provider": "wikipedia",
+      "fallback_used": true,
+      "added_source_count": 1,
+      "warning": "Circuit breaker open"
+    },
+    {
+      "query": "official capital of France government website",
+      "objective": "authoritative",
+      "phase": "primary",
+      "planner": "llm",
+      "provider_attempts": [
+        {
+          "provider": "tavily",
+          "status": "error",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": false,
+          "warning": "tavily circuit breaker is open due to repeated failures",
+          "error": "Circuit breaker open"
+        },
+        {
+          "provider": "wikipedia",
+          "status": "ok",
+          "result_count": 3,
+          "added_source_count": 0,
+          "fallback_used": true
+        },
+        {
+          "provider": "duckduckgo_html",
+          "status": "empty",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": true,
+          "warning": "duckduckgo_html returned no results."
+        },
+        {
+          "provider": "bing_html",
+          "status": "ok",
+          "result_count": 1,
+          "added_source_count": 0,
+          "fallback_used": true
+        }
+      ],
+      "status": "ok",
+      "result_count": 3,
+      "provider": "wikipedia",
+      "fallback_used": true,
+      "added_source_count": 0,
+      "warning": "Circuit breaker open; duckduckgo_html returned no results."
+    },
+    {
+      "query": "what is the capital of France",
+      "objective": "recency",
+      "phase": "primary",
+      "planner": "llm",
+      "provider_attempts": [
+        {
+          "provider": "tavily",
+          "status": "error",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": false,
+          "warning": "tavily circuit breaker is open due to repeated failures",
+          "error": "Circuit breaker open"
+        },
+        {
+          "provider": "wikipedia",
+          "status": "ok",
+          "result_count": 3,
+          "added_source_count": 0,
+          "fallback_used": true
+        },
+        {
+          "provider": "duckduckgo_html",
+          "status": "empty",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": true,
+          "warning": "duckduckgo_html returned no results."
+        },
+        {
+          "provider": "bing_html",
+          "status": "ok",
+          "result_count": 3,
+          "added_source_count": 2,
+          "fallback_used": true
+        }
+      ],
+      "status": "ok",
+      "result_count": 3,
+      "provider": "bing_html",
+      "fallback_used": true,
+      "added_source_count": 2,
+      "warning": "Circuit breaker open; duckduckgo_html returned no results."
+    },
+    {
+      "query": "is Lyon the capital of France debunked",
+      "objective": "contradiction",
+      "phase": "primary",
+      "planner": "llm",
+      "provider_attempts": [
+        {
+          "provider": "tavily",
+          "status": "error",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": false,
+          "warning": "tavily circuit breaker is open due to repeated failures",
+          "error": "Circuit breaker open"
+        },
+        {
+          "provider": "wikipedia",
+          "status": "ok",
+          "result_count": 3,
+          "added_source_count": 0,
+          "fallback_used": true
+        },
+        {
+          "provider": "duckduckgo_html",
+          "status": "empty",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": true,
+          "warning": "duckduckgo_html returned no results."
+        },
+        {
+          "provider": "bing_html",
+          "status": "error",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": true,
+          "warning": "bing_html request timed out",
+          "error": "Timeout"
+        }
+      ],
+      "status": "ok",
+      "result_count": 3,
+      "provider": "wikipedia",
+      "fallback_used": true,
+      "added_source_count": 0,
+      "warning": "Circuit breaker open; duckduckgo_html returned no results.; Timeout"
+    }
+  ],
+  "retrieval_summary": {
+    "source_count": 3,
+    "authoritative_count": 1,
+    "recent_count": 2,
+    "dated_count": 3,
+    "distinct_domain_count": 3,
+    "independent_source_count": 3,
+    "official_source_count": 0,
+    "first_party_count": 0,
+    "primary_source_count": 2,
+    "source_origin_breakdown": {
+      "reference": 2,
+      "web": 1
+    },
+    "freshest_date": "2026-03-23",
+    "domains": [
+      "britannica.com",
+      "en.wikipedia.org",
+      "mappr.co"
+    ],
+    "query_attempt_count": 4,
+    "failed_query_count": 0,
+    "recovery_triggered": false,
+    "recovery_query_count": 0,
+    "recovery_reason": [],
+    "recovery_strategy": "not_needed",
+    "recovery_planner_notes": "",
+    "recovery_fallback_used": false
+  },
+  "temporal_context": {
+    "status": "dated_but_not_required",
+    "requires_recency": false,
+    "dated_source_count": 2,
+    "freshest_date": "2026-03-23",
+    "oldest_date": "2024-03-13",
+    "summary": "Dated evidence was available through 2026-03-23, although this claim is not strongly time-sensitive."
+  },
+  "base_source_assessments": [
+    {
+      "source_id": "S1",
+      "url": "https://www.britannica.com/place/France",
+      "stance": "MIXED",
+      "strength": 0.82,
+      "summary": "The model-guided and heuristic checks disagree on how this source should be interpreted, so FactLens treated it as mixed evidence.",
+      "snippet_used": "The capital and by far the most important city of France is Paris, one of the world\u2019s preeminent cultural and commercial centres."
+    },
+    {
+      "source_id": "S2",
+      "url": "https://en.wikipedia.org/wiki/Capital_punishment_in_France",
+      "stance": "IRRELEVANT",
+      "strength": 0.0,
+      "summary": "Multiple assessments: Source S2 does not provide relevant information about the capital of France.; Source S2 does not provide relevant information about the capital of France.",
+      "snippet_used": ""
+    },
+    {
+      "source_id": "S3",
+      "url": "https://www.mappr.co/capital-cities/france/",
+      "stance": "SUPPORT",
+      "strength": 0.66,
+      "summary": "The grounded passage strongly overlaps the claim.",
+      "snippet_used": "The rest of France lies to the south, including major cities like Lyon and Marseille and, further on, the Mediterranean Sea ."
+    }
+  ],
+  "manual_override": null,
+  "subclaim_results": [],
+  "subclaim_summary": {
+    "count": 0,
+    "mixed_support": false,
+    "verdict_breakdown": {},
+    "synthesis_note": ""
+  }
+}
+RISK FLAGS:
+  ! LLM and heuristic source assessment disagreed on 2 of 3 compared sources.
+  ! Reflection Auditor suggested FALSE, but FactLens kept the calibrated verdict because the direct evidence was not strong enough.
+
+========================================
+
+--- Running Test: Compound Partially True Claim ---
+Input Text: Paris is the capital of France and London is the capital of Japan.
+Extracting claims...
+Extracted 2 claims:
+  - [entity] Paris is the capital of France
+  - [entity] London is the capital of Japan
+
+Processing Claim: Paris is the capital of France
+Retrieving evidence...
+Retrieved 5 sources.
+Verifying claim...
+VERDICT: TRUE
+CONFIDENCE: 0.93
+REASONING: High-quality sources consistently support the claim, and the weighted support score (2.56) clearly exceeds conflicting evidence.
+--- DEBUG RESULT (EXCL EVIDENCE) ---
+{
+  "claim_id": "1",
+  "claim": "Paris is the capital of France",
+  "claim_type": "entity",
+  "time_sensitive": false,
+  "claim_requires_recency": false,
+  "verdict": "TRUE",
+  "confidence": 0.93,
+  "reasoning": "High-quality sources consistently support the claim, and the weighted support score (2.56) clearly exceeds conflicting evidence.",
+  "reasoning_steps": [],
+  "self_reflection": "",
+  "supporting_sources": [
+    "https://en.wikipedia.org/wiki/Council_of_Paris",
+    "https://en.wikipedia.org/wiki/Paris",
+    "https://en.wikipedia.org/wiki/France",
+    "https://en.wikipedia.org/wiki/Libraries_in_Paris",
+    "https://en.wikipedia.org/wiki/Armenian_Catholic_Eparchy_of_Sainte-Croix-de-Paris"
+  ],
+  "conflicting_sources": [],
+  "conflict_detected": false,
+  "conflict_summary": {
+    "summary": "",
+    "drivers": [],
+    "contradiction_types": [],
+    "primary_contradiction_type": "",
+    "supporting_count": 5,
+    "conflicting_count": 0,
+    "mixed_count": 0,
+    "supporting_newest": "unknown",
+    "conflicting_newest": "unknown",
+    "supporting_avg_authority": 0.0,
+    "conflicting_avg_authority": 0.0
+  },
+  "confidence_breakdown": {
+    "evidence_coverage": 1.0,
+    "source_quality": 0.71,
+    "freshness": 0.98,
+    "clarity": 1.0,
+    "support_score": 2.56,
+    "conflict_score": 0.0,
+    "independent_sources": 1,
+    "cross_check_agreement": 1.0
+  },
+  "risk_flags": [
+    "Most relevant sources trace back to the same source network."
+  ],
+  "query_variants": [
+    {
+      "query": "site:britannica.com OR site:wikipedia.org France capital Paris",
+      "objective": "authoritative",
+      "phase": "primary",
+      "planner": "heuristic",
+      "provider_attempts": [
+        {
+          "provider": "tavily",
+          "status": "error",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": false,
+          "error": "Exception('Error 432: ')"
+        },
+        {
+          "provider": "wikipedia",
+          "status": "ok",
+          "result_count": 3,
+          "added_source_count": 0,
+          "fallback_used": true
+        },
+        {
+          "provider": "duckduckgo_html",
+          "status": "empty",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": true,
+          "warning": "duckduckgo_html returned no results."
+        },
+        {
+          "provider": "bing_html",
+          "status": "empty",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": true,
+          "warning": "bing_html returned no results."
+        }
+      ],
+      "status": "ok",
+      "result_count": 3,
+      "provider": "wikipedia",
+      "fallback_used": true,
+      "added_source_count": 0,
+      "warning": "Exception('Error 432: '); duckduckgo_html returned no results.; bing_html returned no results."
+    },
+    {
+      "query": "\"Paris\" \"capital of France\"",
+      "objective": "direct",
+      "phase": "primary",
+      "planner": "heuristic",
+      "provider_attempts": [
+        {
+          "provider": "tavily",
+          "status": "error",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": false,
+          "error": "Exception('Error 432: ')"
+        },
+        {
+          "provider": "wikipedia",
+          "status": "ok",
+          "result_count": 3,
+          "added_source_count": 3,
+          "fallback_used": true
+        }
+      ],
+      "status": "ok",
+      "result_count": 3,
+      "provider": "wikipedia",
+      "fallback_used": true,
+      "added_source_count": 3,
+      "warning": "Exception('Error 432: ')"
+    },
+    {
+      "query": "is Paris still the capital of France OR alternative capital of France",
+      "objective": "contradiction",
+      "phase": "primary",
+      "planner": "llm",
+      "provider_attempts": [
+        {
+          "provider": "tavily",
+          "status": "error",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": false,
+          "error": "Exception('Error 432: ')"
+        },
+        {
+          "provider": "wikipedia",
+          "status": "ok",
+          "result_count": 3,
+          "added_source_count": 1,
+          "fallback_used": true
+        }
+      ],
+      "status": "ok",
+      "result_count": 3,
+      "provider": "wikipedia",
+      "fallback_used": true,
+      "added_source_count": 1,
+      "warning": "Exception('Error 432: ')"
+    },
+    {
+      "query": "what is the current capital of France",
+      "objective": "recency",
+      "phase": "primary",
+      "planner": "llm",
+      "provider_attempts": [
+        {
+          "provider": "tavily",
+          "status": "error",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": false,
+          "error": "Exception('Error 432: ')"
+        },
+        {
+          "provider": "wikipedia",
+          "status": "ok",
+          "result_count": 3,
+          "added_source_count": 1,
+          "fallback_used": true
+        }
+      ],
+      "status": "ok",
+      "result_count": 3,
+      "provider": "wikipedia",
+      "fallback_used": true,
+      "added_source_count": 1,
+      "warning": "Exception('Error 432: ')"
+    }
+  ],
+  "retrieval_summary": {
+    "source_count": 5,
+    "authoritative_count": 0,
+    "recent_count": 4,
+    "dated_count": 5,
+    "distinct_domain_count": 1,
+    "independent_source_count": 1,
+    "official_source_count": 0,
+    "first_party_count": 0,
+    "primary_source_count": 5,
+    "source_origin_breakdown": {
+      "reference": 5
+    },
+    "freshest_date": "2026-03-23",
+    "domains": [
+      "en.wikipedia.org"
+    ],
+    "query_attempt_count": 4,
+    "failed_query_count": 0,
+    "recovery_triggered": false,
+    "recovery_query_count": 0,
+    "recovery_reason": [],
+    "recovery_strategy": "not_needed",
+    "recovery_planner_notes": "",
+    "recovery_fallback_used": false
+  },
+  "temporal_context": {
+    "status": "dated_but_not_required",
+    "requires_recency": false,
+    "dated_source_count": 5,
+    "freshest_date": "2026-03-23",
+    "oldest_date": "2025-05-01",
+    "summary": "Dated evidence was available through 2026-03-23, although this claim is not strongly time-sensitive."
+  },
+  "base_source_assessments": [
+    {
+      "source_id": "S1",
+      "url": "https://en.wikipedia.org/wiki/Council_of_Paris",
+      "stance": "SUPPORT",
+      "strength": 1.0,
+      "summary": "Multiple assessments: The Council of Paris is the deliberative body responsible for governing Paris, the capital of France.; The Council of Paris is the deliberative body responsible for governing Paris, the capital of France.",
+      "snippet_used": "The Council of Paris (French: Conseil de Paris, [k\u0254\u0303s\u025bj d(\u0259) pa\u0281i]) is the deliberative body responsible for governing Paris, the capital of France."
+    },
+    {
+      "source_id": "S2",
+      "url": "https://en.wikipedia.org/wiki/Paris",
+      "stance": "SUPPORT",
+      "strength": 1.0,
+      "summary": "Multiple assessments: Paris is the capital and largest city of France.; Paris is the capital and largest city of France...",
+      "snippet_used": "Paris is the capital and largest city of France, with an estimated city population of 2.04 million in an area of 105.4 km2 (40.7 sq mi), and a metropolitan population of 13.2 million as of January 2026."
+    },
+    {
+      "source_id": "S3",
+      "url": "https://en.wikipedia.org/wiki/France",
+      "stance": "SUPPORT",
+      "strength": 1.0,
+      "summary": "Its capital, largest city and main cultural and economic centre is Paris.",
+      "snippet_used": "Its capital, largest city and main cultural and economic centre is Paris. Metropolitan France was settled during the Iron Age by Celtic tribes known as Gauls before Rome annexed the area in 51 BC, leading to a distinct Gallo-Roman culture."
+    },
+    {
+      "source_id": "S4",
+      "url": "https://en.wikipedia.org/wiki/Libraries_in_Paris",
+      "stance": "SUPPORT",
+      "strength": 1.0,
+      "summary": "Paris, the capital of France, has many of the country's most important libraries.",
+      "snippet_used": "Paris, the capital of France, has many of the country's most important libraries."
+    },
+    {
+      "source_id": "S5",
+      "url": "https://en.wikipedia.org/wiki/Armenian_Catholic_Eparchy_of_Sainte-Croix-de-Paris",
+      "stance": "SUPPORT",
+      "strength": 1.0,
+      "summary": "It has its Cathedral episcopal see, Cath\u00e9drale Sainte-Croix-de-Paris dedicated to the Holy Cross, in Paris, national capital of France.",
+      "snippet_used": "It has its Cathedral episcopal see, Cath\u00e9drale Sainte-Croix-de-Paris dedicated to the Holy Cross, in Paris, national capital of France."
+    }
+  ],
+  "manual_override": null,
+  "subclaim_results": [],
+  "subclaim_summary": {
+    "count": 0,
+    "mixed_support": false,
+    "verdict_breakdown": {},
+    "synthesis_note": ""
+  }
+}
+RISK FLAGS:
+  ! Most relevant sources trace back to the same source network.
+
+Processing Claim: London is the capital of Japan
+Retrieving evidence...
+Retrieved 2 sources.
+Verifying claim...
+VERDICT: UNVERIFIABLE
+CONFIDENCE: 0.29
+REASONING: The retrieved sources were too weak, too sparse, or too conflicting to justify a firmer verdict.
+--- DEBUG RESULT (EXCL EVIDENCE) ---
+{
+  "claim_id": "2",
+  "claim": "London is the capital of Japan",
+  "claim_type": "entity",
+  "time_sensitive": false,
+  "claim_requires_recency": false,
+  "verdict": "UNVERIFIABLE",
+  "confidence": 0.29,
+  "reasoning": "The retrieved sources were too weak, too sparse, or too conflicting to justify a firmer verdict.",
+  "reasoning_steps": [],
+  "self_reflection": "",
+  "supporting_sources": [],
+  "conflicting_sources": [],
+  "conflict_detected": false,
+  "conflict_summary": {
+    "summary": "",
+    "drivers": [],
+    "contradiction_types": [],
+    "primary_contradiction_type": "",
+    "supporting_count": 0,
+    "conflicting_count": 0,
+    "mixed_count": 0,
+    "supporting_newest": "unknown",
+    "conflicting_newest": "unknown",
+    "supporting_avg_authority": 0.0,
+    "conflicting_avg_authority": 0.0
+  },
+  "confidence_breakdown": {
+    "evidence_coverage": 0.0,
+    "source_quality": 0.0,
+    "freshness": 0.72,
+    "clarity": 0.0,
+    "support_score": 0.0,
+    "conflict_score": 0.0,
+    "independent_sources": 0,
+    "cross_check_agreement": 1.0
+  },
+  "risk_flags": [
+    "No relevant evidence survived stance filtering.",
+    "The verdict relies on sparse evidence coverage.",
+    "Reflection Auditor suggested FALSE, but FactLens kept the calibrated verdict because the direct evidence was not strong enough."
+  ],
+  "query_variants": [
+    {
+      "query": "site:britannica.com OR site:wikipedia.org Japan capital London",
+      "objective": "authoritative",
+      "phase": "primary",
+      "planner": "heuristic",
+      "provider_attempts": [
+        {
+          "provider": "tavily",
+          "status": "error",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": false,
+          "warning": "tavily circuit breaker is open due to repeated failures",
+          "error": "Circuit breaker open"
+        },
+        {
+          "provider": "wikipedia",
+          "status": "ok",
+          "result_count": 3,
+          "added_source_count": 0,
+          "fallback_used": true
+        },
+        {
+          "provider": "duckduckgo_html",
+          "status": "empty",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": true,
+          "warning": "duckduckgo_html returned no results."
+        },
+        {
+          "provider": "bing_html",
+          "status": "empty",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": true,
+          "warning": "bing_html returned no results."
+        }
+      ],
+      "status": "ok",
+      "result_count": 3,
+      "provider": "wikipedia",
+      "fallback_used": true,
+      "added_source_count": 0,
+      "warning": "Circuit breaker open; duckduckgo_html returned no results.; bing_html returned no results."
+    },
+    {
+      "query": "\"London\" \"capital of Japan\"",
+      "objective": "direct",
+      "phase": "primary",
+      "planner": "heuristic",
+      "provider_attempts": [
+        {
+          "provider": "tavily",
+          "status": "error",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": false,
+          "warning": "tavily circuit breaker is open due to repeated failures",
+          "error": "Circuit breaker open"
+        },
+        {
+          "provider": "wikipedia",
+          "status": "ok",
+          "result_count": 3,
+          "added_source_count": 0,
+          "fallback_used": true
+        },
+        {
+          "provider": "duckduckgo_html",
+          "status": "empty",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": true,
+          "warning": "duckduckgo_html returned no results."
+        },
+        {
+          "provider": "bing_html",
+          "status": "ok",
+          "result_count": 3,
+          "added_source_count": 0,
+          "fallback_used": true
+        }
+      ],
+      "status": "ok",
+      "result_count": 3,
+      "provider": "wikipedia",
+      "fallback_used": true,
+      "added_source_count": 0,
+      "warning": "Circuit breaker open; duckduckgo_html returned no results."
+    },
+    {
+      "query": "London NOT capital of Japan OR Japan capital Tokyo",
+      "objective": "contradiction",
+      "phase": "primary",
+      "planner": "llm",
+      "provider_attempts": [
+        {
+          "provider": "tavily",
+          "status": "error",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": false,
+          "warning": "tavily circuit breaker is open due to repeated failures",
+          "error": "Circuit breaker open"
+        },
+        {
+          "provider": "wikipedia",
+          "status": "empty",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": true,
+          "warning": "wikipedia returned no results."
+        },
+        {
+          "provider": "duckduckgo_html",
+          "status": "empty",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": true,
+          "warning": "duckduckgo_html returned no results."
+        },
+        {
+          "provider": "bing_html",
+          "status": "ok",
+          "result_count": 3,
+          "added_source_count": 1,
+          "fallback_used": true
+        }
+      ],
+      "status": "ok",
+      "result_count": 3,
+      "provider": "bing_html",
+      "fallback_used": true,
+      "added_source_count": 1,
+      "warning": "Circuit breaker open; wikipedia returned no results.; duckduckgo_html returned no results."
+    },
+    {
+      "query": "London Japan capital latest news",
+      "objective": "recency",
+      "phase": "primary",
+      "planner": "llm",
+      "provider_attempts": [
+        {
+          "provider": "tavily",
+          "status": "error",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": false,
+          "warning": "tavily circuit breaker is open due to repeated failures",
+          "error": "Circuit breaker open"
+        },
+        {
+          "provider": "wikipedia",
+          "status": "ok",
+          "result_count": 3,
+          "added_source_count": 0,
+          "fallback_used": true
+        },
+        {
+          "provider": "duckduckgo_html",
+          "status": "empty",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": true,
+          "warning": "duckduckgo_html returned no results."
+        },
+        {
+          "provider": "bing_html",
+          "status": "ok",
+          "result_count": 3,
+          "added_source_count": 0,
+          "fallback_used": true
+        }
+      ],
+      "status": "ok",
+      "result_count": 3,
+      "provider": "wikipedia",
+      "fallback_used": true,
+      "added_source_count": 0,
+      "warning": "Circuit breaker open; duckduckgo_html returned no results."
+    },
+    {
+      "query": "\"capital city of Japan\" London",
+      "objective": "direct",
+      "phase": "recovery",
+      "planner": "heuristic",
+      "provider_attempts": [
+        {
+          "provider": "tavily",
+          "status": "error",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": false,
+          "error": "Exception('Error 432: ')"
+        },
+        {
+          "provider": "wikipedia",
+          "status": "ok",
+          "result_count": 3,
+          "added_source_count": 0,
+          "fallback_used": true
+        },
+        {
+          "provider": "duckduckgo_html",
+          "status": "empty",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": true,
+          "warning": "duckduckgo_html returned no results."
+        },
+        {
+          "provider": "bing_html",
+          "status": "ok",
+          "result_count": 3,
+          "added_source_count": 0,
+          "fallback_used": true
+        }
+      ],
+      "status": "ok",
+      "result_count": 3,
+      "provider": "wikipedia",
+      "fallback_used": true,
+      "added_source_count": 0,
+      "warning": "Exception('Error 432: '); duckduckgo_html returned no results."
+    },
+    {
+      "query": "\"London is the capital of Japan\" source evidence",
+      "objective": "direct",
+      "phase": "recovery",
+      "planner": "heuristic",
+      "provider_attempts": [
+        {
+          "provider": "tavily",
+          "status": "error",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": false,
+          "error": "Exception('Error 432: ')"
+        },
+        {
+          "provider": "wikipedia",
+          "status": "empty",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": true,
+          "warning": "wikipedia returned no results."
+        },
+        {
+          "provider": "duckduckgo_html",
+          "status": "empty",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": true,
+          "warning": "duckduckgo_html returned no results."
+        },
+        {
+          "provider": "bing_html",
+          "status": "ok",
+          "result_count": 3,
+          "added_source_count": 0,
+          "fallback_used": true
+        }
+      ],
+      "status": "ok",
+      "result_count": 3,
+      "provider": "bing_html",
+      "fallback_used": true,
+      "added_source_count": 0,
+      "warning": "Exception('Error 432: '); wikipedia returned no results.; duckduckgo_html returned no results."
+    },
+    {
+      "query": "London is the capital of Japan official site government university organization",
+      "objective": "authoritative",
+      "phase": "recovery",
+      "planner": "heuristic",
+      "provider_attempts": [
+        {
+          "provider": "tavily",
+          "status": "error",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": false,
+          "error": "Exception('Error 432: ')"
+        },
+        {
+          "provider": "wikipedia",
+          "status": "ok",
+          "result_count": 3,
+          "added_source_count": 1,
+          "fallback_used": true
+        }
+      ],
+      "status": "ok",
+      "result_count": 3,
+      "provider": "wikipedia",
+      "fallback_used": true,
+      "added_source_count": 1,
+      "warning": "Exception('Error 432: ')"
+    },
+    {
+      "query": "London is the capital of Japan 2026 latest official update",
+      "objective": "recency",
+      "phase": "recovery",
+      "planner": "heuristic",
+      "provider_attempts": [
+        {
+          "provider": "tavily",
+          "status": "error",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": false,
+          "error": "Exception('Error 432: ')"
+        },
+        {
+          "provider": "wikipedia",
+          "status": "ok",
+          "result_count": 3,
+          "added_source_count": 0,
+          "fallback_used": true
+        },
+        {
+          "provider": "duckduckgo_html",
+          "status": "empty",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": true,
+          "warning": "duckduckgo_html returned no results."
+        },
+        {
+          "provider": "bing_html",
+          "status": "ok",
+          "result_count": 3,
+          "added_source_count": 0,
+          "fallback_used": true
+        }
+      ],
+      "status": "ok",
+      "result_count": 3,
+      "provider": "wikipedia",
+      "fallback_used": true,
+      "added_source_count": 0,
+      "warning": "Exception('Error 432: '); duckduckgo_html returned no results."
+    },
+    {
+      "query": "London is the capital of Japan contradiction fact check context",
+      "objective": "recency",
+      "phase": "recovery",
+      "planner": "heuristic",
+      "provider_attempts": [
+        {
+          "provider": "tavily",
+          "status": "error",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": false,
+          "warning": "tavily circuit breaker is open due to repeated failures",
+          "error": "Circuit breaker open"
+        },
+        {
+          "provider": "wikipedia",
+          "status": "ok",
+          "result_count": 3,
+          "added_source_count": 0,
+          "fallback_used": true
+        },
+        {
+          "provider": "duckduckgo_html",
+          "status": "empty",
+          "result_count": 0,
+          "added_source_count": 0,
+          "fallback_used": true,
+          "warning": "duckduckgo_html returned no results."
+        },
+        {
+          "provider": "bing_html",
+          "status": "ok",
+          "result_count": 3,
+          "added_source_count": 0,
+          "fallback_used": true
+        }
+      ],
+      "status": "ok",
+      "result_count": 3,
+      "provider": "wikipedia",
+      "fallback_used": true,
+      "added_source_count": 0,
+      "warning": "Circuit breaker open; duckduckgo_html returned no results."
+    }
+  ],
+  "retrieval_summary": {
+    "source_count": 2,
+    "authoritative_count": 0,
+    "recent_count": 1,
+    "dated_count": 1,
+    "distinct_domain_count": 1,
+    "independent_source_count": 1,
+    "official_source_count": 0,
+    "first_party_count": 0,
+    "primary_source_count": 2,
+    "source_origin_breakdown": {
+      "reference": 2
+    },
+    "freshest_date": "2026-02-26",
+    "domains": [
+      "en.wikipedia.org"
+    ],
+    "query_attempt_count": 9,
+    "failed_query_count": 0,
+    "recovery_triggered": true,
+    "recovery_query_count": 5,
+    "recovery_reason": [
+      "Sparse evidence coverage.",
+      "Evidence diversity is too narrow."
+    ],
+    "recovery_strategy": "heuristic_after_llm",
+    "recovery_planner_notes": "LLM-planned recovery did not produce strong enough evidence, so deterministic recovery queries were added.",
+    "recovery_fallback_used": true
+  },
+  "temporal_context": {
+    "status": "dated_but_not_required",
+    "requires_recency": false,
+    "dated_source_count": 1,
+    "freshest_date": "2026-02-26",
+    "oldest_date": "2026-02-26",
+    "summary": "Dated evidence was available through 2026-02-26, although this claim is not strongly time-sensitive."
+  },
+  "base_source_assessments": [
+    {
+      "source_id": "S1",
+      "url": "https://en.wikipedia.org/wiki/Capital_punishment_in_Japan",
+      "stance": "IRRELEVANT",
+      "strength": 0.0,
+      "summary": "Multiple assessments: The passage discusses capital punishment in Japan, but does not mention the capital of Japan.; The passage discusses capital punishment in Japan, but does not mention London or the capital of Japan.",
+      "snippet_used": "Capital punishment is a legal penalty in Japan."
+    },
+    {
+      "source_id": "S2",
+      "url": "https://en.wikipedia.org/wiki/London",
+      "stance": "IRRELEVANT",
+      "strength": 0.0,
+      "summary": "Multiple assessments: The passage discusses London, but does not mention its relationship to Japan.; The passage discusses films set in London, but does not mention Japan or the capital of Japan.",
+      "snippet_used": "[405] London has been the setting for numerous films including Oliver Twist (1948), Scrooge (1951), Peter Pan (1953), One Hundred and One Dalmatians (1961), My Fair Lady (1964), Mary Poppins (1964), Blowup (1966), A Clockwork Orange (1971), The Long Good Friday (1980), The G..."
+    }
+  ],
+  "manual_override": null,
+  "subclaim_results": [],
+  "subclaim_summary": {
+    "count": 0,
+    "mixed_support": false,
+    "verdict_breakdown": {},
+    "synthesis_note": ""
+  }
+}
+RISK FLAGS:
+  ! No relevant evidence survived stance filtering.
+  ! The verdict relies on sparse evidence coverage.
+  ! Reflection Auditor suggested FALSE, but FactLens kept the calibrated verdict because the direct evidence was not strong enough.
+
+========================================
+
