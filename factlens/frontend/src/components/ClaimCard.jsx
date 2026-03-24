@@ -17,29 +17,33 @@ const VERDICT = {
     label: "Verified True",
     dot: "bg-emerald-400",
     textColor: "text-emerald-400",
-    ring: "ring-emerald-500/25",
-    bg: "bg-emerald-500/8",
+    ring: "ring-emerald-500/20",
+    bg: "bg-emerald-500/5",
+    glow: "glow-emerald",
   },
   FALSE: {
     label: "Factually False",
     dot: "bg-rose-400",
     textColor: "text-rose-400",
-    ring: "ring-rose-500/25",
-    bg: "bg-rose-500/8",
+    ring: "ring-rose-500/20",
+    bg: "bg-rose-500/5",
+    glow: "glow-rose",
   },
   PARTIALLY_TRUE: {
     label: "Partially True",
     dot: "bg-amber-400",
     textColor: "text-amber-400",
-    ring: "ring-amber-500/25",
-    bg: "bg-amber-500/8",
+    ring: "ring-amber-500/20",
+    bg: "bg-amber-500/5",
+    glow: "glow-amber",
   },
   UNVERIFIABLE: {
     label: "Unverifiable",
-    dot: "bg-white/30",
+    dot: "bg-white/20",
     textColor: "text-white/40",
-    ring: "ring-white/8",
-    bg: "bg-white/4",
+    ring: "ring-white/5",
+    bg: "bg-white/2",
+    glow: "",
   },
 };
 
@@ -58,9 +62,7 @@ function collectEvidenceSources(result) {
     const sourceId = String(source?.id || "").trim();
     const sourceUrl = String(source?.url || "").trim();
     const key = sourceId || sourceUrl;
-    if (!key) {
-      continue;
-    }
+    if (!key) continue;
 
     const existing = deduped.get(key);
     if (!existing || Number(source?.overall_score || 0) > Number(existing?.overall_score || 0)) {
@@ -73,56 +75,32 @@ function collectEvidenceSources(result) {
 
 function formatOverridePercent(value) {
   const numeric = Number(value);
-  if (!Number.isFinite(numeric)) {
-    return "0%";
-  }
+  if (!Number.isFinite(numeric)) return "0%";
   return `${Math.round(numeric * 100)}%`;
 }
 
 function formatSourceStance(value) {
   const stance = String(value || "").trim().toUpperCase();
-  if (stance === "SUPPORT") {
-    return { label: "support", color: "text-emerald-400" };
-  }
-  if (stance === "CONFLICT") {
-    return { label: "conflict", color: "text-rose-400" };
-  }
-  if (stance === "MIXED") {
-    return { label: "mixed", color: "text-amber-400" };
-  }
+  if (stance === "SUPPORT") return { label: "support", color: "text-emerald-400" };
+  if (stance === "CONFLICT") return { label: "conflict", color: "text-rose-400" };
+  if (stance === "MIXED") return { label: "mixed", color: "text-amber-400" };
   return { label: stance.toLowerCase() || "irrelevant", color: "text-slate-300" };
 }
 
 function formatSourceOrigin(value) {
   const origin = String(value || "").trim().toLowerCase();
-  if (origin === "official") {
-    return { label: "Official", color: "text-sky-300" };
-  }
-  if (origin === "first_party") {
-    return { label: "First-party", color: "text-blue-300" };
-  }
-  if (origin === "reference") {
-    return { label: "Reference", color: "text-violet-300" };
-  }
-  if (origin === "secondary") {
-    return { label: "Secondary", color: "text-slate-300" };
-  }
-  if (origin === "social") {
-    return { label: "Social", color: "text-rose-300" };
-  }
+  if (origin === "official") return { label: "Official", color: "text-sky-300" };
+  if (origin === "first_party") return { label: "First-party", color: "text-blue-300" };
+  if (origin === "reference") return { label: "Reference", color: "text-violet-300" };
+  if (origin === "secondary") return { label: "Secondary", color: "text-slate-300" };
+  if (origin === "social") return { label: "Social", color: "text-rose-300" };
   return null;
 }
 
 function formatSnapshotStamp(value) {
-  if (!value) {
-    return "Capture time unavailable";
-  }
-
+  if (!value) return "Capture time unavailable";
   const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return value;
-  }
-
+  if (Number.isNaN(parsed.getTime())) return value;
   return `${parsed.toLocaleString("en-US", {
     month: "short",
     day: "numeric",
@@ -135,9 +113,7 @@ function formatSnapshotStamp(value) {
 
 function collectEvidenceProof(result) {
   const explicitProof = (result?.evidence_provenance || []).filter(Boolean);
-  if (explicitProof.length) {
-    return explicitProof;
-  }
+  if (explicitProof.length) return explicitProof;
 
   return collectEvidenceSources(result).slice(0, 3).map((source) => {
     const topPassages = [...(source?.evidence_passages || [])]
@@ -175,9 +151,7 @@ function collectContradictionTypes(result) {
 
 function formatDomainLabel(source) {
   const domain = String(source?.domain || "").trim() || "Web";
-  const year = source?.published_label
-    ? String(source.published_label).match(/\d{4}/)?.[0]
-    : null;
+  const year = source?.published_label ? String(source.published_label).match(/\d{4}/)?.[0] : null;
   return year ? `${domain} · ${year}` : domain;
 }
 
@@ -187,71 +161,57 @@ function authorityTier(score) {
   return { label: "Low authority", color: "text-slate-400" };
 }
 
-function SourceRow({ source }) {
-  const stance = formatSourceStance(source?.stance);
-  const origin = formatSourceOrigin(source?.source_origin);
-  const domainLabel = formatDomainLabel(source);
-  const authScore = typeof source?.authority_score === "number" ? source.authority_score * 10 : null;
-  const tier = authScore !== null ? authorityTier(authScore) : null;
+function ConflictSplitView({ result, sources }) {
+  const support = sources.find((s) => String(s?.stance).toUpperCase() === "SUPPORT");
+  const conflict = sources.find((s) => String(s?.stance).toUpperCase() === "CONFLICT");
+  if (!support || !conflict) return null;
 
   return (
-    <div className="glass-card p-4 space-y-2" style={{ minWidth: 0 }}>
-      <div className="flex flex-wrap items-center gap-2 min-w-0">
-        <span
-          className="flex shrink-0 items-center gap-1 rounded-md px-2 py-0.5 font-mono text-[10px] font-semibold"
-          style={{
-            background: "var(--bg-hover)",
-            color: "var(--ink-2)",
-            border: "1px solid var(--border-faint)",
-          }}
-        >
-          <Globe className="h-3 w-3 shrink-0" />
-          <span className="truncate max-w-[180px]">{domainLabel}</span>
-        </span>
-        {source?.stance ? (
-          <span className={`text-[10px] font-bold uppercase tracking-wider ${stance.color}`}>
-            {stance.label}
-          </span>
-        ) : null}
-        {tier ? (
-          <span className={`text-[10px] font-semibold ${tier.color}`}>{tier.label}</span>
-        ) : null}
-        {origin ? (
-          <span className={`text-[10px] font-bold uppercase tracking-wider ${origin.color}`}>
-            {origin.label}
-          </span>
-        ) : null}
-        {Number(source?.independence_group_size || 1) > 1 && Number(source?.independence_weight || 1) < 1 ? (
-          <span className="text-[10px] font-bold uppercase tracking-wider text-amber-300">
-            Shared network
-          </span>
-        ) : null}
+    <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <span className="label-cap text-rose-400">Conflict Breakdown</span>
+        <div className="h-px flex-1 bg-gradient-to-r from-rose-500/20 to-transparent" />
       </div>
+      <div className="relative grid gap-6 lg:grid-cols-2">
+        <div className="absolute left-1/2 top-1/2 z-10 hidden -translate-x-1/2 -translate-y-1/2 items-center justify-center lg:flex">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-black text-[12px] font-black tracking-tighter text-white/40 shadow-[0_0_30px_rgba(0,0,0,1)] ring-4 ring-white/5">VS</div>
+        </div>
+        <div className="glass-card-static rounded-3xl glow-emerald border-emerald-500/20 bg-emerald-500/5 p-6 space-y-4 transition-all hover:bg-emerald-500/10">
+          <div className="flex items-center justify-between"><span className="text-[10px] font-bold uppercase tracking-widest text-emerald-400">Support</span><Zap className="h-4 w-4 text-emerald-400" /></div>
+          <p className="text-sm font-bold text-white leading-snug">{support.title}</p>
+          <blockquote className="relative border-l-2 border-emerald-500/30 pl-4 py-1"><p className="text-xs leading-relaxed italic text-emerald-100/70">"{support.primary_quote || "Direct evidence detected."}"</p></blockquote>
+          <div className="flex items-center gap-2 text-[10px] font-mono text-emerald-500/40"><Globe className="h-3 w-3" /><span className="truncate">{support.domain}</span></div>
+        </div>
+        <div className="glass-card-static rounded-3xl glow-rose border-rose-500/20 bg-rose-500/5 p-6 space-y-4 transition-all hover:bg-rose-500/10">
+          <div className="flex items-center justify-between"><span className="text-[10px] font-bold uppercase tracking-widest text-rose-400">Contradict</span><ShieldAlert className="h-4 w-4 text-rose-400" /></div>
+          <p className="text-sm font-bold text-white leading-snug">{conflict.title}</p>
+          <blockquote className="relative border-l-2 border-rose-500/30 pl-4 py-1"><p className="text-xs leading-relaxed italic text-rose-100/70">"{conflict.primary_quote || "Counter-evidence detected."}"</p></blockquote>
+          <div className="flex items-center gap-2 text-[10px] font-mono text-rose-500/40"><Globe className="h-3 w-3" /><span className="truncate">{conflict.domain}</span></div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
-      <h4 className="truncate text-sm font-semibold text-white">{source?.title || "Untitled source"}</h4>
-
-      {source?.snippet_used || source?.snippet || source?.content ? (
-        <p
-          className="border-l-2 pl-3 text-sm leading-relaxed italic line-clamp-3"
-          style={{ borderColor: "var(--border-subtle)", color: "var(--ink-2)" }}
-        >
-          "{source.snippet_used || source.snippet || String(source.content || "").slice(0, 200)}"
-        </p>
-      ) : null}
-
-      <div className="flex items-center justify-between pt-1">
-        <span className="font-mono text-[10px]" style={{ color: "var(--ink-3)" }}>
-          Trust {authScore !== null ? authScore.toFixed(1) : "N/A"}
-        </span>
-        <a
-          href={source?.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-semibold transition-colors hover:text-white"
-          style={{ color: "var(--ink-3)", border: "1px solid var(--border-faint)" }}
-        >
-          Source <ExternalLink className="h-3 w-3 shrink-0" />
-        </a>
+function SourceRow({ source }) {
+  const stance = formatSourceStance(source?.stance);
+  const tier = authorityTier(typeof source?.authority_score === "number" ? source.authority_score * 10 : 0);
+  return (
+    <div className="glass-card rounded-3xl p-6 space-y-4 transition-all hover:bg-white/[0.04] group border border-white/5">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <span className="flex items-center gap-1.5 rounded-lg bg-white/5 px-2 py-1 text-[10px] font-mono text-white/50 border border-white/5"><Globe className="h-3 w-3" />{source.domain || "Source"}</span>
+          <span className={`text-[10px] font-bold uppercase tracking-widest ${stance.color}`}>{stance.label}</span>
+        </div>
+        <span className={`text-[10px] font-semibold ${tier.color}`}>{tier.label}</span>
+      </div>
+      <h4 className="text-sm font-bold text-white group-hover:text-blue-300 transition-colors line-clamp-2">{source?.title || "Untitled Document"}</h4>
+      {(source?.snippet_used || source?.snippet) && (
+        <p className="border-l-2 border-white/10 pl-4 text-xs italic leading-relaxed" style={{ color: "var(--ink-2)" }}>"{source.snippet_used || source.snippet}"</p>
+      )}
+      <div className="flex items-center justify-between pt-2">
+        <span className="text-[10px] font-mono" style={{ color: "var(--ink-3)" }}>Authoritative Rank: {(source?.authority_score || 0).toFixed(1)}</span>
+        <a href={source?.url} target="_blank" rel="noopener noreferrer" className="btn-secondary !py-1.5 !px-3 !text-[10px]">Access <ExternalLink className="h-3 w-3" /></a>
       </div>
     </div>
   );
@@ -266,418 +226,81 @@ function ClaimCard({ result, claim, anchorId }) {
   const conf = Math.round((result?.confidence || 0) * 100);
   const sources = collectEvidenceSources(result);
   const evidenceProof = collectEvidenceProof(result);
-  const contradictionTypes = collectContradictionTypes(result);
-  const manualOverride = result?.manual_override || null;
+  
   const rawClaim = String(claim?.claim || result?.claim || "");
-  const isErrorClaim = rawClaim.startsWith("{") || rawClaim.startsWith("[");
-  const displayClaim = isErrorClaim
-    ? "A verification step reported an internal notice."
-    : rawClaim;
+  const displayClaim = (rawClaim.startsWith("{") || rawClaim.startsWith("[")) ? "Verification notice generated." : rawClaim;
 
   return (
-    <article
-      id={anchorId}
-      className={`glass-card-static overflow-hidden rounded-2xl ring-1 ${style.ring} animate-fade-in-up`}
-      style={{ minWidth: 0 }}
-    >
-      <div
-        className={`flex items-center justify-between gap-4 px-5 py-4 ${style.bg}`}
-        style={{ borderBottom: "1px solid var(--border-faint)" }}
-      >
-        <div className="flex items-center gap-2.5 min-w-0">
-          <span className={`h-2 w-2 shrink-0 rounded-full ${style.dot}`} />
-          <span className={`text-xs font-bold uppercase tracking-wider ${style.textColor}`}>
-            {style.label}
-          </span>
+    <article id={anchorId} className={`glass-card-static overflow-hidden rounded-[2rem] transition-all duration-500 ring-1 ${style.ring} ${style.glow} animate-fade-in-up`}>
+      <div className={`flex items-center justify-between gap-4 px-6 py-5 ${style.bg} border-b border-white/5`}>
+        <div className="flex items-center gap-3 min-w-0">
+          <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${style.dot} shadow-[0_0_10px_rgba(255,255,255,0.2)]`} />
+          <span className={`text-xs font-black uppercase tracking-[0.15em] ${style.textColor}`}>{style.label}</span>
         </div>
-        <div
-          className="flex shrink-0 items-center gap-1.5 font-mono text-xs"
-          style={{ color: "var(--ink-3)" }}
-        >
-          <Zap className="h-3 w-3" />
-          {conf}% confident
+        <div className="flex items-center gap-2 font-mono text-[11px] text-white/40">
+          <Zap className="h-3.5 w-3.5 fill-current text-blue-400" />
+          <span className="font-bold text-white/60">{conf}% Consensus</span>
         </div>
       </div>
 
-      <div className="p-5 space-y-4">
-        <p
-          className="text-base font-semibold leading-relaxed text-white"
-          style={{ wordBreak: "break-word", overflowWrap: "break-word" }}
-        >
-          {displayClaim}
-        </p>
+      <div className="p-7 space-y-6">
+        <p className="text-lg font-bold leading-relaxed text-white">{displayClaim}</p>
 
-        <div
-          className="flex flex-wrap gap-x-6 gap-y-2 border-t pt-3 font-mono text-[10px]"
-          style={{ borderColor: "var(--border-faint)", color: "var(--ink-3)" }}
-        >
-          <span>{sources.length} source{sources.length !== 1 ? "s" : ""}</span>
-          {result?.confidence_breakdown?.source_quality != null ? (
-            <span>Quality {(result.confidence_breakdown.source_quality * 10).toFixed(1)}</span>
-          ) : null}
-          {result?.retrieval_summary?.freshest_date ? (
-            <span>Latest {result.retrieval_summary.freshest_date}</span>
-          ) : null}
-          {result?.temporal_context?.freshest_date && result.temporal_context.freshest_date !== "unknown" ? (
-            <span>As of {result.temporal_context.freshest_date}</span>
-          ) : null}
-          {result?.time_sensitive ? <span className="text-amber-400">Time-sensitive</span> : null}
-          {result?.conflict_detected ? <span className="text-rose-400">Conflict</span> : null}
+        <div className="flex flex-wrap gap-x-8 gap-y-3 border-t border-white/5 pt-5 font-mono text-[10px] uppercase tracking-widest text-white/30">
+          <span>{sources.length} evidence nodes</span>
+          {result?.confidence_breakdown?.source_quality != null && <span>Quality Index {(result.confidence_breakdown.source_quality * 10).toFixed(1)}</span>}
+          {result?.time_sensitive && <span className="text-amber-400">Temporal Risk</span>}
+          {result?.conflict_detected && <span className="text-rose-400">Contentious</span>}
         </div>
 
-        {manualOverride?.active ? (
-          <div
-            className="rounded-2xl border border-blue-400/15 bg-blue-500/8 px-4 py-3 text-sm text-blue-100"
-            style={{ borderColor: "rgba(96, 165, 250, 0.2)" }}
-          >
-            <p className="font-semibold text-white">Manual source review is active.</p>
-            <p className="mt-1 leading-6">
-              {manualOverride.override_count} source{manualOverride.override_count === 1 ? "" : "s"} changed.
-              {" "}Model verdict: {String(manualOverride.base_verdict || "UNKNOWN").replace(/_/g, " ")} at{" "}
-              {formatOverridePercent(manualOverride.base_confidence)} confidence.
-            </p>
-          </div>
-        ) : null}
-
         <button
-          type="button"
-          onClick={() => setOpen((previous) => !previous)}
-          className="flex w-full items-center justify-between gap-2 rounded-xl px-4 py-3 text-xs font-semibold transition-all hover:bg-white/5"
-          style={{
-            color: "var(--ink-2)",
-            border: "1px solid var(--border-faint)",
-          }}
+          onClick={() => setOpen(!open)}
+          className="flex w-full items-center justify-between gap-3 rounded-2xl bg-white/5 px-5 py-4 text-xs font-bold text-white/60 transition-all hover:bg-white/10 hover:text-white border border-white/5"
         >
-          {open ? "Hide evidence" : "Show evidence & reasoning"}
-          {open ? (
-            <ChevronUp className="h-3.5 w-3.5 shrink-0" />
-          ) : (
-            <ChevronDown className="h-3.5 w-3.5 shrink-0" />
-          )}
+          {open ? "Condense Analysis" : "Expand Verification Trail"}
+          {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </button>
 
-        {open ? (
-          <div className="space-y-5 pt-2 animate-fade-in">
-            {result?.reasoning_steps?.length > 0 ? (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <span className="label-cap">Chain of Thought</span>
-                  <span
-                    className="rounded-full px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider"
-                    style={{ background: "rgba(96,165,250,0.12)", color: "var(--blue-400)", border: "1px solid rgba(96,165,250,0.2)" }}
-                  >
-                    {result.reasoning_steps.length} steps
-                  </span>
+        {open && (
+          <div className="space-y-8 pt-4 animate-fade-in">
+            {result?.reasoning_steps?.length > 0 && (
+              <div className="space-y-5">
+                <div className="flex items-center gap-4"><span className="label-cap text-blue-400">Logic Chain</span><div className="h-px flex-1 bg-gradient-to-r from-blue-500/20 to-transparent" /></div>
+                <div className="relative pl-10 space-y-6">
+                  <div className="absolute left-[13px] top-2 bottom-6 w-0.5 bg-gradient-to-b from-blue-500 to-transparent rounded-full" />
+                  {result.reasoning_steps.map((step, idx) => (
+                    <div key={idx} className="relative group flex gap-5">
+                      <span className="absolute -left-[35px] flex h-6 w-6 items-center justify-center rounded-full bg-[#0a0a15] border border-blue-500/40 text-[10px] font-black text-blue-300 shadow-[0_0_15px_rgba(59,130,246,0.2)]">{idx+1}</span>
+                      <p className="text-sm leading-relaxed text-white/70 group-hover:text-white transition-colors">{step}</p>
+                    </div>
+                  ))}
                 </div>
-                <div className="relative space-y-0 pl-6">
-                  {/* vertical connector line */}
-                  <div
-                    className="absolute left-[9px] top-3 bottom-3 w-px"
-                    style={{ background: "linear-gradient(to bottom, rgba(96,165,250,0.3), rgba(96,165,250,0.05))" }}
-                  />
-                  {result.reasoning_steps.map((step, idx) => {
-                    const isLast = idx === result.reasoning_steps.length - 1;
-                    return (
-                      <div key={idx} className="relative flex gap-3 pb-3">
-                        <span
-                          className="absolute -left-6 flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full font-mono text-[9px] font-bold"
-                          style={{
-                            background: isLast ? "rgba(96,165,250,0.2)" : "var(--bg-hover)",
-                            border: isLast ? "1px solid rgba(96,165,250,0.4)" : "1px solid var(--border-faint)",
-                            color: isLast ? "var(--blue-400)" : "var(--ink-3)",
-                          }}
-                        >
-                          {idx + 1}
-                        </span>
-                        <p
-                          className="text-xs leading-relaxed"
-                          style={{ color: isLast ? "var(--ink-1)" : "var(--ink-2)" }}
-                        >
-                          {step}
-                        </p>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ) : null}
-
-            {result?.reasoning ? (
-              <div className="space-y-2">
-                <span className="label-cap">Conclusion</span>
-                <p
-                  className="text-sm leading-relaxed text-white/70"
-                  style={{ wordBreak: "break-word", overflowWrap: "break-word" }}
-                >
-                  {result.reasoning}
-                </p>
-              </div>
-            ) : null}
-
-            {/* UNVERIFIABLE explanation */}
-            {verdict === "UNVERIFIABLE" && (
-              <div
-                className="rounded-xl p-4 space-y-2"
-                style={{ background: "rgba(255,255,255,0.03)", border: "1px solid var(--border-subtle)" }}
-              >
-                <p className="text-xs font-bold uppercase tracking-wider" style={{ color: "var(--ink-3)" }}>
-                  Why unverifiable?
-                </p>
-                <p className="text-sm leading-relaxed" style={{ color: "var(--ink-2)" }}>
-                  {result?.reasoning ||
-                    "No sufficiently authoritative or consistent sources were found to confirm or deny this claim. It may be too niche, too recent, or phrased in a way that does not match available evidence."}
-                </p>
-                {sources.length > 0 && (
-                  <p className="text-xs" style={{ color: "var(--ink-3)" }}>
-                    {sources.length} source{sources.length !== 1 ? "s" : ""} retrieved but none provided decisive grounding.
-                  </p>
-                )}
               </div>
             )}
 
-            {result?.self_reflection ? (
-              <div className="rounded-xl border border-white/5 bg-white/3 p-4 space-y-2">
-                <span className="label-cap !text-[9px] opacity-50">Auditor Self-Reflection</span>
-                <p className="text-xs leading-relaxed italic text-white/60">
-                  "{result.self_reflection}"
-                </p>
-              </div>
-            ) : null}
+            {result?.reasoning && (
+              <div className="space-y-3"><div className="flex items-center gap-4"><span className="label-cap text-blue-400">Synthesis</span><div className="h-px flex-1 bg-gradient-to-r from-blue-500/20 to-transparent" /></div>
+              <p className="text-sm leading-relaxed text-white/60 bg-white/[0.02] p-5 rounded-3xl border border-white/5">{result.reasoning}</p></div>
+            )}
 
+            {result?.conflict_detected && <ConflictSplitView result={result} sources={sources} />}
 
-            {result?.risk_flags?.some(f => f.includes("Reflection Auditor")) ? (
-              <div
-                className="flex gap-3 rounded-xl p-4 bg-amber-500/10 border border-amber-500/20"
-              >
-                <ShieldAlert className="h-4 w-4 shrink-0 text-amber-400 mt-0.5" />
-                <div className="min-w-0 space-y-1">
-                  <p className="text-xs font-bold text-amber-400 uppercase tracking-wider">
-                    Auditor Warning
-                  </p>
-                  <p className="text-sm leading-relaxed text-amber-200/80">
-                    {result.risk_flags.find(f => f.includes("Reflection Auditor"))}
-                  </p>
+            <div className="space-y-5">
+              <div className="flex items-center justify-between">
+                <span className="label-cap text-blue-400">Evidence Suite</span>
+                <div className="flex gap-2 p-1 bg-white/5 rounded-xl border border-white/5">
+                  <button onClick={() => setViewMode("list")} className={`p-2 rounded-lg transition-all ${viewMode === "list" ? "bg-blue-500 text-white shadow-lg" : "text-white/30 hover:text-white/60"}`}><LayoutList className="h-3.5 w-3.5" /></button>
+                  <button onClick={() => setViewMode("graph")} className={`p-2 rounded-lg transition-all ${viewMode === "graph" ? "bg-blue-500 text-white shadow-lg" : "text-white/30 hover:text-white/60"}`}><Network className="h-3.5 w-3.5" /></button>
                 </div>
               </div>
-            ) : null}
-
-            {result?.conflict_detected && result?.conflict_summary?.summary ? (
-              <div
-                className="flex gap-3 rounded-xl p-4"
-                style={{
-                  background: "rgba(244,63,94,0.07)",
-                  border: "1px solid rgba(244,63,94,0.2)",
-                }}
-              >
-                <ShieldAlert className="h-4 w-4 shrink-0 text-rose-400 mt-0.5" />
-                <div className="min-w-0 space-y-1">
-                  <p className="text-xs font-bold text-rose-400 uppercase tracking-wider">
-                    Conflicting evidence
-                  </p>
-                  <p
-                    className="text-sm leading-relaxed"
-                    style={{ color: "var(--ink-2)", wordBreak: "break-word" }}
-                  >
-                    {result.conflict_summary.summary}
-                  </p>
-                  {contradictionTypes.length ? (
-                    <div className="flex flex-wrap gap-2 pt-1">
-                      {contradictionTypes.map((item) => (
-                        <span
-                          key={item?.id || item?.label}
-                          className="rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-rose-200"
-                          style={{
-                            background: "rgba(244,63,94,0.12)",
-                            border: "1px solid rgba(244,63,94,0.2)",
-                          }}
-                        >
-                          {item?.label || "Unknown conflict"}
-                        </span>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-            ) : null}
-
-            {result?.temporal_context?.summary ? (
-              <div
-                className="flex gap-3 rounded-xl p-4"
-                style={{
-                  background: "rgba(245,158,11,0.08)",
-                  border: "1px solid rgba(245,158,11,0.18)",
-                }}
-              >
-                <Zap className="h-4 w-4 shrink-0 text-amber-400 mt-0.5" />
-                <div className="min-w-0 space-y-1">
-                  <p className="text-xs font-bold text-amber-300 uppercase tracking-wider">
-                    Temporal context
-                  </p>
-                  <p
-                    className="text-sm leading-relaxed"
-                    style={{ color: "var(--ink-2)", wordBreak: "break-word" }}
-                  >
-                    {result.temporal_context.summary}
-                  </p>
-                </div>
-              </div>
-            ) : null}
-
-            {(result?.subclaim_results || []).length > 0 ? (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="label-cap">Subclaim Map</span>
-                  <span className="font-mono text-[10px]" style={{ color: "var(--ink-3)" }}>
-                    {result.subclaim_results.length} parts
-                  </span>
-                </div>
-                {result?.subclaim_summary?.synthesis_note ? (
-                  <p className="text-sm leading-relaxed" style={{ color: "var(--ink-2)" }}>
-                    {result.subclaim_summary.synthesis_note}
-                  </p>
-                ) : null}
-                <div className="grid gap-3">
-                  {result.subclaim_results.map((subclaim) => {
-                    const subclaimStyle = VERDICT[subclaim?.verdict] || VERDICT.UNVERIFIABLE;
-                    const subclaimConfidence = Math.round(Number(subclaim?.confidence || 0) * 100);
-                    return (
-                      <div
-                        key={subclaim?.subclaim_id || subclaim?.claim}
-                        className="rounded-xl p-4 space-y-2"
-                        style={{
-                          border: "1px solid var(--border-faint)",
-                          background: "rgba(255,255,255,0.02)",
-                        }}
-                      >
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <span className={`text-[10px] font-bold uppercase tracking-wider ${subclaimStyle.textColor}`}>
-                            {subclaimStyle.label}
-                          </span>
-                          <span className="font-mono text-[10px]" style={{ color: "var(--ink-3)" }}>
-                            {subclaimConfidence}% confident
-                          </span>
-                        </div>
-                        <p className="text-sm font-semibold text-white">{subclaim?.claim}</p>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ) : null}
-
-            {evidenceProof.length > 0 ? (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="label-cap">Evidence Proof</span>
-                  <span className="font-mono text-[10px]" style={{ color: "var(--ink-3)" }}>
-                    {evidenceProof.length} snapshot{evidenceProof.length === 1 ? "" : "s"}
-                  </span>
-                </div>
-
-                <div className="grid gap-3">
-                  {evidenceProof.map((proof) => {
-                    const stance = formatSourceStance(proof?.stance);
-                    return (
-                      <div
-                        key={proof?.snapshot_id || proof?.url || proof?.source_id || proof?.source_title}
-                        className="rounded-xl p-4 space-y-3"
-                        style={{
-                          border: "1px solid var(--border-faint)",
-                          background: "rgba(255,255,255,0.02)",
-                        }}
-                      >
-                        <div className="flex flex-wrap items-center gap-2 min-w-0">
-                          <span
-                            className="flex shrink-0 items-center gap-1 rounded-md px-2 py-0.5 font-mono text-[10px] font-semibold"
-                            style={{
-                              background: "var(--bg-hover)",
-                              color: "var(--ink-2)",
-                              border: "1px solid var(--border-faint)",
-                            }}
-                          >
-                            <Globe className="h-3 w-3 shrink-0" />
-                            <span className="truncate max-w-[120px]">{proof?.domain || "Web"}</span>
-                          </span>
-                          {proof?.stance ? (
-                            <span className={`text-[10px] font-bold uppercase tracking-wider ${stance.color}`}>
-                              {stance.label}
-                            </span>
-                          ) : null}
-                          {proof?.snapshot_id ? (
-                            <span className="font-mono text-[10px]" style={{ color: "var(--ink-3)" }}>
-                              {proof.snapshot_id}
-                            </span>
-                          ) : null}
-                        </div>
-
-                        <p className="text-sm font-semibold text-white">
-                          {proof?.source_title || "Untitled source"}
-                        </p>
-
-                        {proof?.primary_quote ? (
-                          <p
-                            className="border-l-2 pl-3 text-sm leading-relaxed italic"
-                            style={{ borderColor: "var(--border-subtle)", color: "var(--ink-2)" }}
-                          >
-                            "{proof.primary_quote}"
-                          </p>
-                        ) : null}
-
-                        <div
-                          className="flex flex-wrap items-center justify-between gap-2 font-mono text-[10px]"
-                          style={{ color: "var(--ink-3)" }}
-                        >
-                          <span>{formatSnapshotStamp(proof?.captured_at)}</span>
-                          {proof?.content_hash ? <span>hash {proof.content_hash}</span> : null}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ) : null}
-
-            {sources.length > 0 ? (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="label-cap">Sources ({sources.length})</span>
-                  <div className="flex gap-1">
-                    {[
-                      { id: "list", Icon: LayoutList, label: "List" },
-                      { id: "graph", Icon: Network, label: "Graph" },
-                    ].map(({ id, Icon, label }) => (
-                      <button
-                        key={id}
-                        type="button"
-                        onClick={() => setViewMode(id)}
-                        className={`flex items-center gap-1 rounded-lg px-2.5 py-1 text-[10px] font-semibold transition-all ${
-                          viewMode === id ? "bg-white/10 text-white" : "text-white/30 hover:text-white/70"
-                        }`}
-                      >
-                        <Icon className="h-3 w-3" /> {label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {viewMode === "graph" ? (
-                  <div
-                    className="overflow-hidden rounded-xl"
-                    style={{ border: "1px solid var(--border-faint)" }}
-                  >
-                    <EvidenceGraph result={result} />
-                  </div>
-                ) : (
-                  <div className="grid gap-3">
-                    {sources.map((source) => (
-                      <SourceRow key={source.url || source.id || source.title} source={source} />
-                    ))}
-                  </div>
-                )}
-              </div>
-            ) : null}
+              {viewMode === "graph" ? (
+                <div className="rounded-3xl border border-white/5 overflow-hidden h-[400px] bg-black/20"><EvidenceGraph result={result} /></div>
+              ) : (
+                <div className="grid gap-4">{sources.map((s, i) => <SourceRow key={i} source={s} />)}</div>
+              )}
+            </div>
           </div>
-        ) : null}
+        )}
       </div>
     </article>
   );

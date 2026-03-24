@@ -1,20 +1,21 @@
 import ClaimCard from "./ClaimCard";
+import { Link } from "react-router-dom";
 
 const VERDICT_META = {
   TRUE: {
-    label: "True",
+    label: "Verify True",
     badge: "bg-emerald-500/12 text-emerald-200 ring-1 ring-inset ring-emerald-400/20",
-    bar: "bg-gradient-to-r from-emerald-500 to-emerald-400",
+    bar: "bg-gradient-to-r from-emerald-500 to-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.3)]",
   },
   FALSE: {
-    label: "False",
+    label: "Factually False",
     badge: "bg-rose-500/12 text-rose-200 ring-1 ring-inset ring-rose-400/20",
-    bar: "bg-gradient-to-r from-rose-500 to-rose-400",
+    bar: "bg-gradient-to-r from-rose-500 to-rose-400 shadow-[0_0_12px_rgba(244,63,94,0.3)]",
   },
   PARTIALLY_TRUE: {
-    label: "Partially true",
+    label: "Partially True",
     badge: "bg-amber-500/12 text-amber-200 ring-1 ring-inset ring-amber-400/20",
-    bar: "bg-gradient-to-r from-amber-500 to-amber-400",
+    bar: "bg-gradient-to-r from-amber-500 to-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.3)]",
   },
   UNVERIFIABLE: {
     label: "Unverifiable",
@@ -23,12 +24,14 @@ const VERDICT_META = {
   },
 };
 
-function StatCard({ label, value, helper }) {
+function StatCard({ label, value, helper, delay }) {
   return (
-    <div className="glass-card rounded-[1.4rem] px-4 py-4">
-      <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">{label}</p>
-      <p className="mt-2 font-mono text-2xl font-semibold text-white sm:text-3xl">{value}</p>
-      <p className="mt-2 text-sm text-slate-400">{helper}</p>
+    <div className={`glass-card rounded-3xl p-6 space-y-3 animate-fade-in-up ${delay}`}>
+      <p className="label-cap">{label}</p>
+      <div className="flex items-baseline gap-2">
+        <p className="font-display text-3xl font-bold text-white">{value}</p>
+      </div>
+      <p className="text-xs leading-relaxed" style={{ color: "var(--ink-2)" }}>{helper}</p>
     </div>
   );
 }
@@ -40,6 +43,7 @@ function AccuracyReport({ results, claims }) {
     accumulator[claim.id] = claim;
     return accumulator;
   }, {});
+
   const counts = results.reduce(
     (accumulator, result) => ({
       ...accumulator,
@@ -48,36 +52,10 @@ function AccuracyReport({ results, claims }) {
     { TRUE: 0, FALSE: 0, PARTIALLY_TRUE: 0, UNVERIFIABLE: 0 },
   );
 
-  const claimTypeCounts = claims.reduce((accumulator, claim) => {
-    const key = claim.claim_type || "entity";
-    return { ...accumulator, [key]: (accumulator[key] || 0) + 1 };
-  }, {});
-
-  const decisiveCount = counts.TRUE + counts.FALSE;
-  const decisiveRate = verifiedCount ? Math.round((decisiveCount / verifiedCount) * 100) : 0;
-  const timeSensitiveCount = claims.filter((claim) => claim.time_sensitive).length;
-  const conflictCount = results.filter((result) => result.conflict_detected).length;
   const avgConfidence = verifiedCount
-    ? Math.round(
-        (results.reduce((sum, result) => sum + (result.confidence || 0), 0) / verifiedCount) * 100,
-      )
-    : 0;
-  const sourceTotals = results.reduce(
-    (totals, result) => ({
-      authoritative: totals.authoritative + (result.retrieval_summary?.authoritative_count || 0),
-      dated: totals.dated + (result.retrieval_summary?.dated_count || 0),
-      sources: totals.sources + (result.retrieval_summary?.source_count || 0),
-    }),
-    { authoritative: 0, dated: 0, sources: 0 },
-  );
-  const authorityCoverage = sourceTotals.sources
-    ? Math.round((sourceTotals.authoritative / sourceTotals.sources) * 100)
-    : 0;
-  const datedCoverage = sourceTotals.sources
-    ? Math.round((sourceTotals.dated / sourceTotals.sources) * 100)
+    ? Math.round((results.reduce((sum, result) => sum + (result.confidence || 0), 0) / verifiedCount) * 100)
     : 0;
 
-  // Weighted credibility score: TRUE=1.0, PARTIALLY_TRUE=0.5, UNVERIFIABLE=0.2, FALSE=0
   const credibilityScore = verifiedCount
     ? Math.round(
         ((counts.TRUE * 1.0 + counts.PARTIALLY_TRUE * 0.5 + counts.UNVERIFIABLE * 0.2) / verifiedCount) *
@@ -85,105 +63,119 @@ function AccuracyReport({ results, claims }) {
           100,
       )
     : 0;
+
   const credibilityColor =
     credibilityScore >= 70
-      ? { text: "text-emerald-300", badge: "bg-emerald-500/12 ring-1 ring-inset ring-emerald-400/20 text-emerald-200", label: "High credibility" }
+      ? { text: "text-emerald-400", glow: "glow-emerald", label: "High Integrity" }
       : credibilityScore >= 40
-      ? { text: "text-amber-300", badge: "bg-amber-500/12 ring-1 ring-inset ring-amber-400/20 text-amber-200", label: "Moderate credibility" }
-      : { text: "text-rose-300", badge: "bg-rose-500/12 ring-1 ring-inset ring-rose-400/20 text-rose-200", label: "Low credibility" };
+      ? { text: "text-amber-400", glow: "glow-amber", label: "Mixed Consensus" }
+      : { text: "text-rose-400", glow: "glow-rose", label: "Low Integrity" };
+
+  const getReportRouteId = (activeSession) => {
+    return activeSession?.id;
+  };
 
   return (
-    <section className="glass-card-static rounded-[2rem] p-4 animate-fade-in-up gradient-border sm:p-6">
-      <div className="flex flex-col gap-5">
-        <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-blue-300">Accuracy report</p>
-          <h2 className="mt-2 font-display text-3xl text-white sm:text-4xl">Evidence-backed claim map</h2>
-          <p className="mt-3 text-sm leading-7 text-slate-400">
-            {totalClaims} claims extracted, {verifiedCount} verified. Highlights where evidence is strong, where sources disagree, and where claims remain risky.
-          </p>
-        </div>
-
-        <div className="flex flex-col gap-4 sm:flex-row">
-          {verifiedCount > 0 ? (
-            <div className="glass-card rounded-[1.5rem] px-5 py-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Credibility score</p>
-              <p className={`mt-2 font-mono text-3xl font-semibold sm:text-4xl ${credibilityColor.text}`}>{credibilityScore}%</p>
-              <span className={`mt-2 inline-block rounded-full px-3 py-1 text-xs font-medium ${credibilityColor.badge}`}>{credibilityColor.label}</span>
+    <section className="animate-fade-in space-y-12">
+      {/* ── Summary Hub ───────────────────────────────────────── */}
+      <div className="grid gap-6 lg:grid-cols-[1fr_2fr]">
+        {/* Score Card */}
+        {verifiedCount > 0 && (
+          <div className={`glass-card rounded-[2rem] p-8 flex flex-col justify-between ${credibilityColor.glow}`}>
+            <div className="space-y-4">
+              <span className="label-cap">Integrity Score</span>
+              <div className="flex flex-col">
+                <span className={`font-display text-7xl font-bold shimmer-text leading-tight ${credibilityColor.text}`}>
+                  {credibilityScore}%
+                </span>
+                <span className={`mt-2 text-sm font-bold uppercase tracking-widest ${credibilityColor.text}`}>
+                  {credibilityColor.label}
+                </span>
+              </div>
             </div>
-          ) : null}
-          <div className="glass-card rounded-[1.5rem] px-4 py-4 sm:px-5">
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Decisive verdicts</p>
-            <p className="mt-2 font-mono text-3xl font-semibold text-white sm:text-4xl">{decisiveRate}%</p>
-            <p className="mt-2 text-sm text-slate-400">Claims judged true or false.</p>
+            <p className="mt-8 text-xs leading-relaxed" style={{ color: "var(--ink-2)" }}>
+              A weighted composite of source authority, claim types, and cross-reference confidence.
+            </p>
+          </div>
+        )}
+
+        {/* Breakdown Stats */}
+        <div className="grid gap-4 sm:grid-cols-2">
+          {Object.entries(VERDICT_META).map(([verdict, meta], i) => (
+            <div key={verdict} className={`glass-card rounded-3xl p-6 flex items-center justify-between group animate-fade-in-up delay-${i + 1}`}>
+              <div className="space-y-1">
+                <p className="text-xs font-bold uppercase tracking-widest" style={{ color: "var(--ink-3)" }}>{meta.label}</p>
+                <p className="text-2xl font-bold text-white group-hover:text-blue-300 transition-colors uppercase tracking-widest">
+                  {counts[verdict]}
+                </p>
+              </div>
+              <div className={`h-1.5 w-12 rounded-full ${meta.bar}`} />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Advanced Signals ───────────────────────────────────── */}
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+        <StatCard label="Time sensitive" value={claims.filter(c => c.time_sensitive).length} helper="Temporal risk detected." delay="delay-1" />
+        <StatCard label="Conflicts" value={results.filter(r => r.conflict_detected).length} helper="Dueling evidence paths." delay="delay-2" />
+        <StatCard label="Confidence" value={`${avgConfidence}%`} helper="Mean heuristic certainty." delay="delay-3" />
+        <StatCard label="Dated Sources" value={`${verifiedCount ? Math.round((results.reduce((s,r)=>s+(r.retrieval_summary?.dated_count||0),0) / results.reduce((s,r)=>s+(r.retrieval_summary?.source_count||1),0)) * 100) : 0}%`} helper="Temporal traceability rate." delay="delay-4" />
+      </div>
+
+      {/* ── Visual Map ────────────────────────────────────────── */}
+      <div className="space-y-8">
+        <div className="glass-card-static rounded-3xl p-8 space-y-8">
+          <div className="flex items-center justify-between">
+            <h3 className="label-cap text-blue-400">Verdict Distribution Map</h3>
+            <span className="text-xs font-mono" style={{ color: "var(--ink-3)" }}>{verifiedCount} claims analyzed</span>
+          </div>
+          
+          <div className="space-y-4">
+            <div className="flex h-4 overflow-hidden rounded-full bg-white/5 shadow-inner">
+              {Object.entries(VERDICT_META).map(([verdict, meta]) => {
+                const width = verifiedCount ? (counts[verdict] / verifiedCount) * 100 : 0;
+                return (
+                  <div
+                    key={verdict}
+                    className={`${meta.bar} transition-all duration-1000 ease-in-out`}
+                    style={{ width: `${width}%` }}
+                  />
+                );
+              })}
+            </div>
+            
+            <div className="flex flex-wrap gap-4 px-1">
+              {Object.entries(VERDICT_META).map(([verdict, meta]) => (
+                <div key={verdict} className="flex items-center gap-2">
+                  <div className={`h-1.5 w-1.5 rounded-full ${meta.bar.split(' ')[0]}`} />
+                  <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--ink-2)" }}>
+                    {meta.label}: {Math.round(verifiedCount ? (counts[verdict]/verifiedCount)*100 : 0)}%
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="mt-6 flex flex-wrap gap-2">
-        {Object.entries(VERDICT_META).map(([verdict, meta]) => (
-          <span key={verdict} className={`rounded-full px-3 py-1.5 text-xs font-medium sm:px-4 sm:py-2 sm:text-sm ${meta.badge}`}>
-            {meta.label}: {counts[verdict]}
-          </span>
-        ))}
-      </div>
-
-      <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-        <StatCard label="Time-sensitive" value={timeSensitiveCount} helper="Need recent evidence." />
-        <StatCard label="Conflicts" value={conflictCount} helper="Supporting + conflicting evidence." />
-        <StatCard label="Avg confidence" value={`${avgConfidence}%`} helper="Across all verified claims." />
-        <StatCard label="Dated sources" value={`${datedCoverage}%`} helper="Sources with publication dates." />
-      </div>
-
-      <div className="mt-4 glass-card rounded-[1.5rem] p-4 text-sm text-slate-400">
-        Authority coverage: <span className="font-semibold text-white">{authorityCoverage}%</span>
-      </div>
-
-      <div className="mt-6 glass-card rounded-[1.5rem] p-4">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
-          <span>Verdict distribution</span>
-          <span className="font-mono">{verifiedCount} verified</span>
-        </div>
-        <div className="flex h-3 overflow-hidden rounded-full bg-slate-800/60">
-          {Object.entries(VERDICT_META).map(([verdict, meta]) => {
-            const width = verifiedCount ? (counts[verdict] / verifiedCount) * 100 : 0;
-            return (
-              <div
-                key={verdict}
-                className={`${meta.bar} transition-all duration-700`}
-                style={{ width: `${width}%` }}
-                title={`${meta.label}: ${counts[verdict]}`}
-              />
-            );
-          })}
-        </div>
-      </div>
-
-      {Object.keys(claimTypeCounts).length ? (
-        <div className="mt-6 glass-card rounded-[1.5rem] p-4">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
-            <span>Claim mix</span>
-            <span className="font-mono">{totalClaims} extracted</span>
+        {/* Individual Claims */}
+        <div className="space-y-6">
+          <div className="flex items-center gap-4 px-2">
+            <span className="label-cap text-blue-400 shrink-0">Verification Trail</span>
+            <div className="h-px w-full bg-gradient-to-r from-blue-400/20 to-transparent" />
           </div>
-          <div className="flex flex-wrap gap-2">
-            {Object.entries(claimTypeCounts).map(([claimType, count]) => (
-              <span key={claimType} className="glass-pill rounded-full px-4 py-2 text-sm text-slate-300">
-                {claimType.replace(/_/g, " ")}: {count}
-              </span>
+          <div className="space-y-4">
+            {results.map((result, index) => (
+              <div key={result.claim_id} className={`animate-fade-in-up delay-${Math.min(index + 1, 6)}`}>
+                <ClaimCard
+                  anchorId={`claim-${result.claim_id}`}
+                  result={result}
+                  claim={claimMap[result.claim_id]}
+                />
+              </div>
             ))}
           </div>
         </div>
-      ) : null}
-
-      <div className="mt-8 space-y-5">
-        {results.map((result, index) => (
-          <div key={result.claim_id} className={`animate-fade-in-up delay-${Math.min(index + 1, 6)}`}>
-            <ClaimCard
-              anchorId={`claim-${result.claim_id}`}
-              result={result}
-              claim={claimMap[result.claim_id]}
-            />
-          </div>
-        ))}
       </div>
     </section>
   );

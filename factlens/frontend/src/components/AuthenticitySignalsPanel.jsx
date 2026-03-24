@@ -60,27 +60,6 @@ const MEDIA_META = {
     barColor: "from-slate-500 to-slate-400",
     Icon: Camera,
   },
-  LIKELY_AI: {
-    label: "Likely synthetic-media signal",
-    tone: "border-fuchsia-400/20 bg-fuchsia-500/8 text-fuchsia-100",
-    glow: "glow-purple",
-    barColor: "from-fuchsia-500 to-rose-400",
-    Icon: ImageOff,
-  },
-  POSSIBLY_AI: {
-    label: "Possible synthetic-media signal",
-    tone: "border-orange-400/20 bg-orange-500/8 text-orange-100",
-    glow: "glow-amber",
-    barColor: "from-orange-500 to-amber-400",
-    Icon: ImageOff,
-  },
-  LIKELY_HUMAN: {
-    label: "No strong synthetic-media signal",
-    tone: "border-emerald-400/20 bg-emerald-500/8 text-emerald-100",
-    glow: "glow-emerald",
-    barColor: "from-emerald-500 to-teal-400",
-    Icon: Camera,
-  },
 };
 
 function formatAnalysisMode(value) {
@@ -105,7 +84,7 @@ function SignalCard({ title, detection, metaMap, imagePreview = false, compact =
 
   return (
     <article
-      className={`rounded-[1.5rem] border p-4 transition-all duration-300 ${
+      className={`glass-card-inner-glow rounded-[1.5rem] border p-4 transition-all duration-300 ${
         compact ? "sm:p-4" : "sm:p-5"
       } ${meta.tone} ${meta.glow} animate-fade-in-up`}
     >
@@ -134,11 +113,11 @@ function SignalCard({ title, detection, metaMap, imagePreview = false, compact =
           <div className="mt-2 flex items-center gap-3">
             <div className="h-1.5 w-20 overflow-hidden rounded-full bg-black/20 sm:w-24">
               <div
-                className={`h-full rounded-full bg-gradient-to-r ${meta.barColor} transition-all duration-700`}
+                className={`h-full rounded-full bg-gradient-to-r ${meta.barColor} transition-all duration-700 ease-out shadow-[0_0_8px_rgba(255,255,255,0.1)]`}
                 style={{ width: `${probability ?? 0}%` }}
               />
             </div>
-            <span className="font-mono text-xs opacity-80">
+            <span className="font-mono text-[10px] font-bold opacity-60 tabular-nums">
               {probability !== null ? `${probability}%` : "N/A"}
             </span>
           </div>
@@ -151,7 +130,7 @@ function SignalCard({ title, detection, metaMap, imagePreview = false, compact =
 
       {(detection?.analysis_mode || detection?.provider_label || detection?.model) ? (
         <div className="mt-4 rounded-2xl border border-white/8 bg-black/10 px-4 py-3 text-sm">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] opacity-60">Review method</p>
+          <p className="label-cap !text-[9px] opacity-60">Review method</p>
           <p className="mt-2 leading-6 opacity-90">
             {formatAnalysisMode(detection?.analysis_mode)}
             {detection?.provider_label ? ` via ${detection.provider_label}` : ""}
@@ -216,10 +195,10 @@ function AuthenticitySignalsPanel({ aiDetection, mediaDetection, compact = false
   }
 
   return (
-    <section className="glass-card-static rounded-[1.75rem] p-4 animate-fade-in-up sm:p-5">
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Authenticity signals</p>
-        <h3 className="mt-2 text-xl font-semibold text-white sm:text-2xl">Context signals, not truth verdicts</h3>
+    <section className="glass-card-static glass-card-inner-glow rounded-[1.75rem] p-5 animate-fade-in-up sm:p-7">
+      <div className="space-y-3">
+        <p className="label-cap">Authenticity Analysis</p>
+        <h3 className="text-2xl font-bold text-white sm:text-3xl tracking-tight">Context signals, not truth verdicts</h3>
         <p className="mt-2 text-sm leading-7 text-slate-400">
           These checks estimate whether the submitted text or media looks machine-generated. They help frame risk, but they do not determine factual accuracy on their own and media signals are not forensic proof.
         </p>

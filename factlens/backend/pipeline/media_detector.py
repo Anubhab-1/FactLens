@@ -290,22 +290,29 @@ async def _vision_heuristic_result(target_url: str, warnings: list[str] | None =
      ]
 
      # Run multiple times for self-consistency (we'll do 3 runs and average)
-     results = []
-     for i in range(3):
-         try:
-             response = await llm.ainvoke(
-                 [
-                     SystemMessage(content=enhanced_prompt),
-                     HumanMessage(content=message_content),
-                 ]
-             )
-             parsed = _parse_json_object(
-                 response.content if isinstance(response.content, str) else str(response.content)
-             )
-             results.append(parsed)
-         except Exception:
-             # If one run fails, continue with others
-             continue
+     async def _single_run(index: int):
+         for attempt in range(2):
+             try:
+                 # Stagger the starts to avoid hitting rate limits simultaneously
+                 await asyncio.sleep(index * 0.5) 
+                 response = await llm.ainvoke(
+                     [
+                         SystemMessage(content=enhanced_prompt),
+                         HumanMessage(content=message_content),
+                     ]
+                 )
+                 return _parse_json_object(
+                     response.content if isinstance(response.content, str) else str(response.content)
+                 )
+             except Exception:
+                 if attempt == 0:
+                     await asyncio.sleep(1) # Wait before retry
+                     continue
+                 return None
+
+     tasks = [_single_run(i) for i in range(3)]
+     raw_results = await asyncio.gather(*tasks)
+     results = [r for r in raw_results if r is not None]
      
      # Aggregate results
      if not results:

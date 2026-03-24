@@ -7,23 +7,20 @@ import {
 } from "../lib/sessions";
 
 const VERDICT_META = {
-  TRUE: { color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
-  FALSE: { color: "text-rose-400", bg: "bg-rose-500/10", border: "border-rose-500/20" },
-  PARTIALLY_TRUE: { color: "text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/20" },
-  UNVERIFIABLE: { color: "text-neutral-400", bg: "bg-neutral-500/10", border: "border-neutral-500/20" },
+  TRUE: { color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20", glow: "glow-emerald" },
+  FALSE: { color: "text-rose-400", bg: "bg-rose-500/10", border: "border-rose-500/20", glow: "glow-rose" },
+  PARTIALLY_TRUE: { color: "text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/20", glow: "glow-amber" },
+  UNVERIFIABLE: { color: "text-neutral-400", bg: "bg-neutral-500/10", border: "border-neutral-500/20", glow: "" },
 };
 
 function StatItem({ icon: Icon, label, value, colorClass = "text-white" }) {
   return (
     <div className="flex flex-col gap-1">
-      <div className="flex items-center gap-2 text-neutral-500">
-        <Icon className="h-3.5 w-3.5" />
-        <span className="text-[10px] font-bold uppercase tracking-widest">{label}</span>
+      <div className="flex items-center gap-2">
+        <Icon className="h-3.5 w-3.5 text-neutral-500" />
+        <span className="label-cap !text-[9px]">{label}</span>
       </div>
-      <p className={`text-2xl font-semibold tabular-nums ${colorClass}`}>{value}</p>
-      <p className="text-[10px] font-mono uppercase tracking-wide text-neutral-500">
-        {label}: {value}
-      </p>
+      <p className={`text-3xl font-bold tabular-nums tracking-tighter ${colorClass}`}>{value}</p>
     </div>
   );
 }
@@ -59,7 +56,7 @@ function ReportOverview({ session }) {
              </div>
           </div>
           
-          <h1 className="text-4xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-6xl">
+          <h1 className="text-4xl font-extrabold tracking-tight sm:text-6xl text-gradient-blue">
             {getSessionTitle(session)}
           </h1>
           
@@ -68,7 +65,7 @@ function ReportOverview({ session }) {
           </p>
         </div>
 
-        <div className="glass-card-static flex flex-col items-center justify-center p-8 text-center ring-1 ring-white/5 lg:p-10">
+        <div className="glass-card-static glass-card-inner-glow flex flex-col items-center justify-center p-8 text-center ring-1 ring-white/5 lg:p-10">
            <div className="text-6xl font-black tracking-tighter text-white sm:text-7xl">
               {credibilityScore}%
            </div>
@@ -78,7 +75,7 @@ function ReportOverview({ session }) {
         </div>
       </div>
 
-      <div className="glass-card border-white/5 bg-neutral-900/40 px-8 py-8 sm:px-10">
+      <div className="glass-card glass-card-inner-glow border-white/5 bg-neutral-900/40 px-8 py-10 sm:px-10">
         <div className="grid grid-cols-2 gap-8 md:grid-cols-4 lg:gap-12">
           <StatItem icon={CheckCircle2} label="TRUE" value={stats.counts.TRUE} colorClass="text-emerald-400" />
           <StatItem icon={AlertCircle} label="FALSE" value={stats.counts.FALSE} colorClass="text-rose-400" />

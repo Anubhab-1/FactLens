@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import { FileText, Globe, LoaderCircle, Search, X, Youtube, Zap } from "lucide-react";
 
 const INPUT_MODES = [
@@ -14,6 +14,7 @@ function InputPanel({
   onSubmit, onReviewClaims,
   isLoading, isReviewLoading,
 }) {
+  const [isFocused, setIsFocused] = useState(false);
   const isBusy  = isLoading || isReviewLoading;
   const charLen = inputValue.length;
   const nearLimit = charLen > 14000;
@@ -27,15 +28,17 @@ function InputPanel({
     const onKey = (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && !isBusy && inputValue.trim()) {
         e.preventDefault();
-        onSubmit();
+        onReviewClaims();
       }
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [isBusy, inputValue, onSubmit]);
+  }, [isBusy, inputValue, onReviewClaims]);
 
   return (
-    <div className="glass-card-static overflow-hidden animate-fade-in-up">
+    <div className={`glass-card-static overflow-hidden animate-fade-in-up rounded-3xl transition-all duration-500 ${
+      isFocused ? "ring-1 ring-blue-500/30 shadow-[0_0_40px_-10px_rgba(59,130,246,0.15)]" : ""
+    }`}>
 
       {/* ── Mode tabs ───────────────────────────────────────── */}
       <div
@@ -76,19 +79,23 @@ function InputPanel({
           <textarea
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
             disabled={isBusy}
             rows={9}
             placeholder="Paste an article, transcript, or social post to extract and verify its claims."
-            className="w-full resize-none px-5 py-5 text-[15px] leading-relaxed text-white placeholder:text-white/20 focus:outline-none sm:px-7 sm:py-6 disabled:opacity-50"
+            className="w-full resize-none px-5 py-5 text-[15px] leading-relaxed text-white placeholder:text-white/20 focus:outline-none sm:px-8 sm:py-8 disabled:opacity-50"
           />
         ) : (
           <input
             type="url"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
             disabled={isBusy}
             placeholder="https://example.com/article"
-            className="w-full px-5 py-6 text-[15px] text-white placeholder:text-white/20 focus:outline-none sm:px-7 disabled:opacity-50"
+            className="w-full px-5 py-6 text-[15px] text-white placeholder:text-white/20 focus:outline-none sm:px-8 disabled:opacity-50"
           />
         )}
 
@@ -127,30 +134,30 @@ function InputPanel({
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={onReviewClaims}
-            disabled={isBusy || !inputValue.trim()}
-            className="btn-secondary text-xs"
-          >
-            {isReviewLoading ? (
-              <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Search className="h-3.5 w-3.5" />
-            )}
-            Review claims first
-          </button>
-
-          <button
-            type="button"
             onClick={onSubmit}
             disabled={isBusy || !inputValue.trim() || overLimit}
-            className="btn-primary btn-shimmer text-xs"
+            className="btn-secondary text-xs"
           >
             {isLoading ? (
               <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
             ) : (
               <Zap className="h-3.5 w-3.5 fill-current" />
             )}
-            Verify now
+            Quick Verify
+          </button>
+
+          <button
+            type="button"
+            onClick={onReviewClaims}
+            disabled={isBusy || !inputValue.trim()}
+            className="btn-primary btn-shimmer text-xs"
+          >
+            {isReviewLoading ? (
+              <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Search className="h-3.5 w-3.5" />
+            )}
+            Extract & Review
           </button>
         </div>
       </div>
@@ -162,7 +169,7 @@ function InputPanel({
       >
         {isYoutube
           ? "FactLens will transcribe the video audio automatically."
-          : <>Press <kbd className="rounded-md bg-white/6 px-1.5 py-0.5">Ctrl+Enter</kbd> to verify instantly.</>
+          : <>Press <kbd className="rounded-md bg-white/6 px-1.5 py-0.5">Ctrl+Enter</kbd> to extract and review claims.</>
         }
       </p>
     </div>

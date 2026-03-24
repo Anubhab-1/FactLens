@@ -30,7 +30,7 @@ function TopNavigation({ sessionCount }) {
           </span>
           <span
             style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.02em" }}
-            className="text-xl font-bold text-white"
+            className="text-xl font-bold text-gradient-blue"
           >
             FactLens
           </span>

@@ -42,12 +42,12 @@ function WorkspacePage({
   return (
     <div className="page-wrapper animate-fade-in">
       {/* ── Page header ────────────────────────────────────────── */}
-      <header className="mb-10 space-y-3">
+      <header className="mb-12 space-y-4">
         <span className="label-cap">Workspace</span>
-        <h1 className="text-4xl font-extrabold text-white sm:text-5xl" style={{ letterSpacing: "-0.03em" }}>
+        <h1 className="text-4xl font-extrabold sm:text-6xl text-gradient-blue" style={{ letterSpacing: "-0.04em" }}>
           Fact-check anything.
         </h1>
-        <p className="max-w-xl text-base leading-relaxed" style={{ color: "var(--ink-2)" }}>
+        <p className="max-w-2xl text-base leading-relaxed sm:text-lg" style={{ color: "var(--ink-2)" }}>
           Paste text, a URL, or a YouTube link. FactLens will extract atomic claims and verify them
           against cross-referenced primary sources.
         </p>
@@ -57,158 +57,173 @@ function WorkspacePage({
       <div className="grid gap-10 lg:grid-cols-[1fr_340px]">
 
         {/* ── Main Column ──────────────────────────────────────── */}
-        <div className="min-w-0 space-y-8">
-
-          {/* Input Hub */}
-          <InputPanel
-            inputMode={inputMode}
-            inputValue={inputValue}
-            setInputMode={setInputMode}
-            setInputValue={setInputValue}
-            onSubmit={onSubmit}
-            onReviewClaims={onReviewClaims}
-            isLoading={isLoading}
-            isReviewLoading={isPreparingDraft}
-          />
+        <div className="min-w-0 space-y-12 relative">
+          {/* subtle background glow for the main column */}
+          <div className="absolute -top-20 -left-20 w-64 h-64 bg-blue-500/5 blur-[100px] pointer-events-none" />
+          
+          <section className="space-y-6">
+            <InputPanel
+              inputMode={inputMode}
+              inputValue={inputValue}
+              setInputMode={setInputMode}
+              setInputValue={setInputValue}
+              onSubmit={onSubmit}
+              onReviewClaims={onReviewClaims}
+              isLoading={isLoading}
+              isReviewLoading={isPreparingDraft}
+            />
+          </section>
 
           {/* Error: draft failed */}
           {claimDraft?.status === "error" && (
-            <div className="glass-card-static rounded-2xl border border-rose-500/20 bg-rose-500/8 p-6 space-y-3 animate-fade-in-up">
-              <div className="flex items-center gap-2.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-pulse" />
-                <p className="text-sm font-semibold text-rose-400">Draft Generation Failed</p>
+            <div className="glass-card-static rounded-3xl border border-rose-500/20 bg-rose-500/10 p-8 space-y-4 animate-fade-in-up">
+              <div className="flex items-center gap-3">
+                <span className="h-2 w-2 rounded-full bg-rose-500 animate-pulse" />
+                <h3 className="text-sm font-bold text-rose-400 uppercase tracking-widest">Draft Generation Failed</h3>
               </div>
-              <p className="text-sm leading-relaxed break-words" style={{ color: "var(--ink-2)" }}>
+              <p className="text-sm leading-relaxed" style={{ color: "var(--ink-2)" }}>
                 {claimDraft.error}
               </p>
-              {inputMode === "url" && inputValue && (
-                <div className="space-y-2 pt-1">
-                  <p className="text-xs" style={{ color: "var(--ink-3)" }}>
-                    The URL may be paywalled, JS-rendered, or blocked. You can paste the article text directly instead.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setInputMode("text");
-                      setInputValue("");
-                    }}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-4 py-2 text-xs font-semibold text-white transition-all hover:bg-white/15"
-                  >
-                    Switch to text mode →
-                  </button>
+              {inputMode === "url" && (
+                <button
+                  type="button"
+                  onClick={() => { setInputMode("text"); setInputValue(""); }}
+                  className="btn-secondary text-xs"
+                >
+                  Switch to text mode →
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Analysis Active / Results */}
+          {(hasReviewDraft || previewState) && (
+            <div className="space-y-16 animate-fade-in">
+              
+              {/* Claim Review Suite */}
+              {hasReviewDraft && (
+                <div className="space-y-8">
+                  <div className="flex items-center gap-4">
+                    <span className="label-cap text-blue-400 shrink-0">Review Suite</span>
+                    <div className="h-px w-full bg-gradient-to-r from-blue-400/20 to-transparent" />
+                  </div>
+                  <ClaimReviewPanel
+                    draft={claimDraft}
+                    onUpdateClaim={onUpdateDraftClaim}
+                    onAddClaim={onAddDraftClaim}
+                    onRemoveClaim={onRemoveDraftClaim}
+                    onVerifyReviewedClaims={onVerifyReviewedClaims}
+                    onDiscardDraft={onDiscardDraft}
+                    isSubmitting={isSubmittingReviewedClaims}
+                  />
+                </div>
+              )}
+
+              {/* Discovery Suite: Context and Authenticity */}
+              {previewState && (
+                <div className="space-y-8 relative">
+                  <div className="absolute -right-20 top-0 w-48 h-48 bg-emerald-500/5 blur-[80px] pointer-events-none" />
+                  <div className="flex items-center gap-4">
+                    <span className="label-cap text-emerald-400 shrink-0">Discovery Suite</span>
+                    <div className="h-px w-full bg-gradient-to-r from-emerald-400/20 to-transparent" />
+                  </div>
+                  <div className="grid gap-6">
+                    <AuthenticitySignalsPanel
+                      aiDetection={previewState.aiDetection}
+                      mediaDetection={previewState.mediaDetection}
+                    />
+                    <SourceCapturePanel
+                      sourceCapture={previewState.sourceCapture}
+                      inputMode={previewState.inputMode ?? inputMode}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Extraction & Trace Suite */}
+              {previewState?.sourceText && (previewState?.claims?.length ?? 0) > 0 && (
+                <div className="space-y-8">
+                  <div className="flex items-center gap-4">
+                    <span className="label-cap text-purple-400 shrink-0">Logic Suite</span>
+                    <div className="h-px w-full bg-gradient-to-r from-purple-400/20 to-transparent" />
+                  </div>
+                  <div className="space-y-6">
+                    {previewState.claimExtraction && (
+                      <ClaimExtractionPanel claimExtraction={previewState.claimExtraction} />
+                    )}
+                    <ClaimTracePanel
+                      sourceText={previewState.sourceText}
+                      claims={previewState.claims}
+                      selectedClaimId={selectedClaimId}
+                      onSelectClaimId={setSelectedClaimId}
+                      isTruncated={previewState.sourceTextTruncated}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Verification Suite */}
+              {(isLoading || hasResults) && (
+                <div className="space-y-8 relative">
+                  <div className="absolute -left-20 bottom-0 w-64 h-64 bg-blue-500/5 blur-[100px] pointer-events-none" />
+                  <div className="flex items-center gap-4">
+                    <span className="label-cap text-blue-400 shrink-0">Verification Suite</span>
+                    <div className="h-px w-full bg-gradient-to-r from-blue-400/20 to-transparent" />
+                  </div>
+                  
+                  <div className="space-y-8">
+                    {/* Pipeline progress */}
+                    {isLoading && activeSession?.pipelineStage && (
+                      <div className="glass-card-static p-8 space-y-6">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-sm font-bold text-white uppercase tracking-widest">Pipeline Active</h3>
+                          <span className="label-cap animate-pulse text-blue-400">processing…</span>
+                        </div>
+                        <PipelineProgress
+                          stage={activeSession.pipelineStage}
+                          progress={activeSession.progress}
+                          liveQuery={activeSession.liveQuery}
+                        />
+                      </div>
+                    )}
+
+                    {/* Completion banner */}
+                    {!hasReviewDraft && activeSession?.status === "done" && (
+                      <div className="glass-card-static flex items-center justify-between gap-6 rounded-3xl border border-emerald-500/20 bg-emerald-500/10 p-8 animate-fade-in-up">
+                        <div className="space-y-1">
+                          <p className="text-base font-bold text-emerald-400">Analysis Complete</p>
+                          <p className="text-sm" style={{ color: "var(--ink-2)" }}>
+                            The multi-agent consensus report is now ready for review.
+                          </p>
+                        </div>
+                        <Link
+                          to={`/report/${getReportRouteId(activeSession)}`}
+                          className="btn-primary text-sm shadow-emerald"
+                        >
+                          View Full Report
+                        </Link>
+                      </div>
+                    )}
+
+                    {/* Live Preview / Accuracy Report */}
+                    {hasResults && (
+                      <div className="space-y-6">
+                        <div className="flex items-center justify-between px-2">
+                          <h3 className="text-lg font-bold text-white">Live Verification Insights</h3>
+                          <Link
+                            to={`/report/${getReportRouteId(activeSession)}`}
+                            className="text-xs font-bold text-blue-400 hover:text-blue-300 transition-colors uppercase tracking-widest"
+                          >
+                            Fullscreen report →
+                          </Link>
+                        </div>
+                        <AccuracyReport results={activeSession.results} claims={activeSession.claims} />
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
-          )}
-
-          {/* Error: analysis interrupted */}
-          {!hasReviewDraft && activeSession?.status === "error" && (
-            <div className="glass-card-static rounded-2xl border border-rose-500/20 bg-rose-500/8 p-6 space-y-3 animate-fade-in-up">
-              <div className="flex items-center gap-2.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-pulse" />
-                <p className="text-sm font-semibold text-rose-400">Analysis Interrupted</p>
-              </div>
-              <p className="text-sm leading-relaxed break-words" style={{ color: "var(--ink-2)" }}>
-                {activeSession.error}
-              </p>
-              <button
-                onClick={onSubmit}
-                className="text-xs font-semibold"
-                style={{ color: "var(--ink-3)", letterSpacing: "0.05em" }}
-              >
-                Try again →
-              </button>
-            </div>
-          )}
-
-          {/* Claim review */}
-          {hasReviewDraft && (
-            <div className="animate-fade-in">
-              <ClaimReviewPanel
-                draft={claimDraft}
-                onUpdateClaim={onUpdateDraftClaim}
-                onAddClaim={onAddDraftClaim}
-                onRemoveClaim={onRemoveDraftClaim}
-                onVerifyReviewedClaims={onVerifyReviewedClaims}
-                onDiscardDraft={onDiscardDraft}
-                isSubmitting={isSubmittingReviewedClaims}
-              />
-            </div>
-          )}
-
-          {/* Authenticity panels */}
-          {previewState && (
-            <div className="space-y-5 animate-fade-in">
-              <AuthenticitySignalsPanel
-                aiDetection={previewState.aiDetection}
-                mediaDetection={previewState.mediaDetection}
-              />
-              <SourceCapturePanel
-                sourceCapture={previewState.sourceCapture}
-                inputMode={previewState.inputMode ?? inputMode}
-              />
-              {previewState.claimExtraction && (
-                <ClaimExtractionPanel claimExtraction={previewState.claimExtraction} />
-              )}
-            </div>
-          )}
-
-          {/* Claim trace */}
-          {previewState?.sourceText && (previewState?.claims?.length ?? 0) > 0 && (
-            <ClaimTracePanel
-              sourceText={previewState.sourceText}
-              claims={previewState.claims}
-              selectedClaimId={selectedClaimId}
-              onSelectClaimId={setSelectedClaimId}
-              isTruncated={previewState.sourceTextTruncated}
-            />
-          )}
-
-          {/* Pipeline progress */}
-          {isLoading && activeSession?.pipelineStage && (
-            <div className="space-y-3 animate-fade-in">
-              <div className="flex items-center justify-between">
-                <span className="label-cap">Pipeline active</span>
-                <span className="label-cap animate-pulse" style={{ color: "var(--blue-400)" }}>
-                  processing…
-                </span>
-              </div>
-              <PipelineProgress stage={activeSession.pipelineStage} progress={activeSession.progress} />
-            </div>
-          )}
-
-          {/* Completion banner */}
-          {!hasReviewDraft && activeSession?.status === "done" && (
-            <div className="glass-card-static flex items-center justify-between gap-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/8 p-5 animate-fade-in-up">
-              <div>
-                <p className="text-sm font-semibold text-emerald-400">Verification complete</p>
-                <p className="text-xs mt-0.5" style={{ color: "var(--ink-3)" }}>
-                  Report has been synthesized and indexed.
-                </p>
-              </div>
-              <Link
-                to={`/report/${getReportRouteId(activeSession)}`}
-                className="btn-primary text-xs shrink-0"
-              >
-                View report <ChevronRight className="h-3.5 w-3.5" />
-              </Link>
-            </div>
-          )}
-
-          {/* Live preview strip */}
-          {!hasReviewDraft && hasResults && (
-            <section className="space-y-4 animate-fade-in">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold text-white">Live Preview</h3>
-                <Link
-                  to={`/report/${getReportRouteId(activeSession)}`}
-                  className="text-xs font-semibold text-blue-400 hover:underline"
-                >
-                  Fullscreen report →
-                </Link>
-              </div>
-              <AccuracyReport results={activeSession.results} claims={activeSession.claims} />
-            </section>
           )}
         </div>
 
@@ -216,15 +231,15 @@ function WorkspacePage({
         <aside className="min-w-0 space-y-8">
 
           {/* Quick presets */}
-          <div className="glass-card-static p-5 space-y-4">
+          <div className="glass-card-static glass-card-inner-glow p-5 space-y-4">
             <span className="label-cap">Quick presets</span>
             <div className="space-y-2">
               {SAMPLE_INPUTS.map((sample, i) => (
                 <button
                   key={i}
                   onClick={() => handleApplySample(sample)}
-                  className="glass-card group w-full p-4 text-left animate-fade-in-up"
-                  style={{ animationDelay: `${i * 0.05}s` }}
+                  className="glass-card glass-card-inner-glow group w-full p-4 text-left animate-fade-in-up"
+                  style={{ animationDelay: `${0.1 + i * 0.05}s` }}
                 >
                   <p className="text-xs font-semibold text-white group-hover:text-blue-300 transition-colors">
                     {sample.label}
@@ -238,7 +253,7 @@ function WorkspacePage({
           </div>
 
           {/* Recent passes */}
-          <div className="glass-card-static p-5 space-y-4">
+          <div className="glass-card-static glass-card-inner-glow p-5 space-y-4 animate-fade-in-up" style={{ animationDelay: "0.3s" }}>
             <div className="flex items-center justify-between">
               <span className="label-cap">Recent passes</span>
               <Link to="/history" className="text-[10px] font-bold text-blue-500 hover:underline uppercase tracking-wider">
@@ -247,7 +262,7 @@ function WorkspacePage({
             </div>
             <div className="space-y-2.5">
               {recentSessions.length > 0 ? (
-                recentSessions.map((s) => (
+                recentSessions.map((s, i) => (
                   <SessionCard key={s.id} session={s} onReuseSession={onReuseSession} compact />
                 ))
               ) : (
@@ -261,7 +276,8 @@ function WorkspacePage({
           {/* Methodology link */}
           <Link
             to="/methodology"
-            className="glass-card group flex items-start gap-4 p-5"
+            className="glass-card glass-card-inner-glow group flex items-start gap-4 p-5 animate-fade-in-up"
+            style={{ animationDelay: "0.4s" }}
           >
             <BookOpenText className="h-5 w-5 shrink-0 text-blue-400 mt-0.5" />
             <div className="min-w-0">

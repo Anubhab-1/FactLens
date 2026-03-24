@@ -331,55 +331,54 @@ async def _verify_claim_with_context(claim: dict, evidence: dict, claims: list[d
 
 async def _stream_retrieval_and_verification(claims: list[dict], _emit):
     total_claims = len(claims)
-    retrieved_evidence: list[tuple[dict, dict]] = []
-    completed_retrievals = 0
-    completed_verifications = 0
+    event_queue = asyncio.Queue()
+    
+    async def _push(payload: dict):
+        await event_queue.put(_emit(payload))
 
-    yield _emit({"type": "retrieving_start", "data": {"total": total_claims}})
-
-    async def _retrieve_single_claim(claim: dict):
-        return await retrieve_evidence(claim)
-
-    async for claim, evidence in _run_with_limit(claims, _retrieve_single_claim, limit=5):
-        completed_retrievals += 1
-        retrieved_evidence.append((claim, evidence))
-        yield _emit(
-            {
-                "type": "retrieving_progress",
-                "data": {
-                    "claim_id": claim.get("id"),
-                    "done": completed_retrievals,
-                    "total": total_claims,
-                },
-            }
-        )
-
-    yield _emit({"type": "verifying_start", "data": {"total": total_claims}})
-
-    async def _verify_single_claim(item: tuple[dict, dict]):
-        nonlocal completed_verifications
-        claim, evidence = item
+    async def _process_single_claim(claim: dict):
+        async def _on_query(data: dict):
+            await _push({"type": "retrieving_query", "data": data})
+        
+        # Step 1: Retrieve evidence with live query updates
+        evidence = await retrieve_evidence(claim, progress_callback=_on_query)
+        
+        # Step 2: Verify claim immediately with full claims list as context
         result = await _verify_claim_with_context(claim, evidence, claims)
-        completed_verifications += 1
         return result
 
-    async for _item, result in _run_with_limit(retrieved_evidence, _verify_single_claim, limit=5):
-        yield _emit(
-            {
-                "type": "verifying_progress",
-                "data": result,
-            }
-        )
-        yield _emit(
-            {
-                "type": "verifying_status",
-                "data": {
-                    "done": completed_verifications,
-                    "total": total_claims,
-                },
-            }
-        )
+    async def _producer():
+        completed_verifications = 0
+        try:
+            async for _item, result in _run_with_limit(claims, _process_single_claim, limit=10):
+                completed_verifications += 1
+                await _push({"type": "verifying_progress", "data": result})
+                await _push(
+                    {
+                        "type": "verifying_status",
+                        "data": {
+                            "done": completed_verifications,
+                            "total": total_claims,
+                        },
+                    }
+                )
+        except Exception as exc:
+            await _push({"type": "error", "message": f"Verification failed: {exc}"})
+        finally:
+            await event_queue.put(None) # Sentinel
 
+    yield _emit({"type": "verifying_start", "data": {"total": total_claims}})
+    
+    producer_task = asyncio.create_task(_producer())
+    
+    while True:
+        event = await event_queue.get()
+        if event is None:
+            break
+        yield event
+    
+    await producer_task
+    
     yield _emit({"type": "reflecting_start"})
     await asyncio.sleep(0.5) 
 

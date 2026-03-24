@@ -1,0 +1,152 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Count 1 /Kids [6 0 R] >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>
+endobj
+6 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 7 0 R >>
+endobj
+7 0 obj
+<< /Length 2497 >>
+stream
+q 0.1 0.3 0.6 rg 0 680 612 112 re f Q
+BT
+1 0 0 1 50 740 Tm
+1 1 1 rg
+/F2 18 Tf
+(FactLens Verification Report) Tj
+1 0 0 1 50 718 Tm
+1 1 1 rg
+/F2 18 Tf
+(Report ID: test-123) Tj
+1 0 0 1 50 696 Tm
+0.23 0.51 0.96 rg
+/F2 11 Tf
+(RUN DIAGNOSTICS) Tj
+1 0 0 1 50 666 Tm
+0.2 0.2 0.2 rg
+/F2 9 Tf
+(Completed: 2026-03-24T03:10:00Z) Tj
+1 0 0 1 50 652 Tm
+0 0 0 rg
+/F1 10 Tf
+(Average Confidence: 98% | Verdicts: 2) Tj
+1 0 0 1 50 638 Tm
+0 0 0 rg
+/F1 10 Tf
+(Verdict Mix: VERIFIED TRUE: 1, FACTUALLY FALSE: 1, PARTIALLY TRUE: 0, UNVERIFIABLE: 0) Tj
+1 0 0 1 50 624 Tm
+0.23 0.51 0.96 rg
+/F2 11 Tf
+(AUTHENTICITY SIGNALS) Tj
+1 0 0 1 50 594 Tm
+0 0 0 rg
+/F1 10 Tf
+(Source Content: No detection data.) Tj
+1 0 0 1 50 580 Tm
+0 0 0 rg
+/F1 10 Tf
+(Visual Media: No detection data.) Tj
+1 0 0 1 50 566 Tm
+0.23 0.51 0.96 rg
+/F2 11 Tf
+(CLAIM-BY-CLAIM ANALYSIS) Tj
+1 0 0 1 50 536 Tm
+0.06 0.69 0.44 rg
+/F2 10 Tf
+(CLAIM 1: VERIFIED TRUE) Tj
+1 0 0 1 50 522 Tm
+0 0 0 rg
+/F1 10 Tf
+(Statement: The Pacific Ocean is the largest ocean on Earth.) Tj
+1 0 0 1 74 508 Tm
+0.2 0.2 0.2 rg
+/F3 9 Tf
+(Reasoning: Standard geographic fact confirmed by multiple authoritative sources) Tj
+1 0 0 1 74 494 Tm
+0.2 0.2 0.2 rg
+/F3 9 Tf
+(including NOAA and Encyclopedia Britannica.) Tj
+1 0 0 1 74 480 Tm
+0.2 0.2 0.2 rg
+/F2 9 Tf
+(Audit Trail \(Chain of Thought\):) Tj
+1 0 0 1 98 466 Tm
+0.2 0.2 0.2 rg
+/F3 9 Tf
+(1. Identified 'Pacific Ocean' and 'largest' as key entities.) Tj
+1 0 0 1 98 452 Tm
+0.2 0.2 0.2 rg
+/F3 9 Tf
+(2. Cross-referenced with global oceanic data.) Tj
+1 0 0 1 98 438 Tm
+0.2 0.2 0.2 rg
+/F3 9 Tf
+(3. Confirmed Pacific surface area exceeds Atlantic, Indian, and Arctic combined.) Tj
+1 0 0 1 74 424 Tm
+0.2 0.2 0.2 rg
+/F2 9 Tf
+(Top Evidence:) Tj
+1 0 0 1 74 410 Tm
+0 0 0 rg
+/F1 10 Tf
+(  [1] wikipedia.org | Pacific Ocean) Tj
+1 0 0 1 74 396 Tm
+0.2 0.2 0.2 rg
+/F3 9 Tf
+(      https://en.wikipedia.org/wiki/Pacific_Ocean) Tj
+1 0 0 1 50 382 Tm
+0.2 0.2 0.2 rg
+/F3 9 Tf
+(------------------------------------------------------------) Tj
+1 0 0 1 50 368 Tm
+0.88 0.22 0.33 rg
+/F2 10 Tf
+(CLAIM 2: FACTUALLY FALSE) Tj
+1 0 0 1 50 354 Tm
+0 0 0 rg
+/F1 10 Tf
+(Statement: The moon is made of green cheese.) Tj
+1 0 0 1 74 340 Tm
+0.2 0.2 0.2 rg
+/F3 9 Tf
+(Reasoning: Lunar samples and orbital observation confirm the moon is composed of) Tj
+1 0 0 1 74 326 Tm
+0.2 0.2 0.2 rg
+/F3 9 Tf
+(silicate rock.) Tj
+1 0 0 1 50 312 Tm
+0.2 0.2 0.2 rg
+/F3 9 Tf
+(------------------------------------------------------------) Tj
+1 0 0 1 492 35 Tm 0.5 0.5 0.5 rg /F1 8 Tf (Page 1 of 1) Tj
+ET
+endstream
+endobj
+xref
+0 8
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000121 00000 n 
+0000000191 00000 n 
+0000000266 00000 n 
+0000000334 00000 n 
+0000000480 00000 n 
+trailer
+<< /Size 8 /Root 1 0 R >>
+startxref
+3029
+%%EOF

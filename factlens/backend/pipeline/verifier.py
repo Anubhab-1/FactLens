@@ -18,7 +18,7 @@ from pipeline.scoring import (
 )
 
 llm, llm_descriptor = create_chat_model("verifier", temperature=0.1, max_tokens=2048)
-LLM_CALL_LOCK = asyncio.Lock()
+
 
 SYSTEM_PROMPT = """You are an elite investigative fact-checker. Your mission is 100% accuracy through rigorous logical deduction.
 
@@ -1595,13 +1595,12 @@ async def _reflect_on_verdict(claim: dict, result: dict, session_claims: list[di
     )
 
     try:
-        async with LLM_CALL_LOCK:
-            response = await llm.ainvoke(
-                [
-                    SystemMessage(content="You are a skeptical fact-check auditor."),
-                    HumanMessage(content=user_message),
-                ]
-            )
+        response = await llm.ainvoke(
+            [
+                SystemMessage(content="You are a skeptical fact-check auditor."),
+                HumanMessage(content=user_message),
+            ]
+        )
         reflection = _parse_json_object(
             response.content if isinstance(response.content, str) else str(response.content)
         )
@@ -1678,32 +1677,30 @@ async def verify_claim(claim: dict, evidence: dict, session_claims: list[dict] |
         verification_results = []
         for i in range(3):  # Run 3 times for self-consistency
             try:
-                async with LLM_CALL_LOCK:
-                    response = await llm.ainvoke(
-                        [
-                            SystemMessage(content=SYSTEM_PROMPT),
-                            HumanMessage(content=user_message),
-                        ]
-                    )
+                response = await llm.ainvoke(
+                    [
+                        SystemMessage(content=SYSTEM_PROMPT),
+                        HumanMessage(content=user_message),
+                    ]
+                )
                 try:
                     parsed_result = _parse_json_object(
                         response.content if isinstance(response.content, str) else str(response.content)
                     )
                     verification_results.append(parsed_result)
                 except Exception:
-                    async with LLM_CALL_LOCK:
-                        retry_response = await llm.ainvoke(
-                            [
-                                SystemMessage(content=SYSTEM_PROMPT),
-                                HumanMessage(
-                                    content=(
-                                        f"{user_message}\n\n"
-                                        "Return strict JSON with double-quoted keys and values. "
-                                        "Do not include raw quoted passages inside the JSON."
-                                    )
-                                ),
-                            ]
-                        )
+                    retry_response = await llm.ainvoke(
+                        [
+                            SystemMessage(content=SYSTEM_PROMPT),
+                            HumanMessage(
+                                content=(
+                                    f"{user_message}\n\n"
+                                    "Return strict JSON with double-quoted keys and values. "
+                                    "Do not include raw quoted passages inside the JSON."
+                                )
+                            ),
+                        ]
+                    )
                     parsed_result = _parse_json_object(
                         retry_response.content
                         if isinstance(retry_response.content, str)
@@ -1770,31 +1767,29 @@ async def verify_claim(claim: dict, evidence: dict, session_claims: list[dict] |
         else:
             # All runs failed, fall back to single attempt
             try:
-                async with LLM_CALL_LOCK:
-                    response = await llm.ainvoke(
-                        [
-                            SystemMessage(content=SYSTEM_PROMPT),
-                            HumanMessage(content=user_message),
-                        ]
-                    )
+                response = await llm.ainvoke(
+                    [
+                        SystemMessage(content=SYSTEM_PROMPT),
+                        HumanMessage(content=user_message),
+                    ]
+                )
                 try:
                     parsed = _parse_json_object(
                         response.content if isinstance(response.content, str) else str(response.content)
                     )
                 except Exception:
-                    async with LLM_CALL_LOCK:
-                        retry_response = await llm.ainvoke(
-                            [
-                                SystemMessage(content=SYSTEM_PROMPT),
-                                HumanMessage(
-                                    content=(
-                                        f"{user_message}\n\n"
-                                        "Return strict JSON with double-quoted keys and values. "
-                                        "Do not include raw quoted passages inside the JSON."
-                                    )
-                                ),
-                            ]
-                        )
+                    retry_response = await llm.ainvoke(
+                        [
+                            SystemMessage(content=SYSTEM_PROMPT),
+                            HumanMessage(
+                                content=(
+                                    f"{user_message}\n\n"
+                                    "Return strict JSON with double-quoted keys and values. "
+                                    "Do not include raw quoted passages inside the JSON."
+                                )
+                            ),
+                        ]
+                    )
                     parsed = _parse_json_object(
                         retry_response.content
                         if isinstance(retry_response.content, str)

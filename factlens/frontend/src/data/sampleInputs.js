@@ -38,4 +38,14 @@ export const sampleInputs = [
     talkingPoint: "Use this last in the presentation to show the product handling realistic, messy source material.",
     value: "",
   },
+  {
+    id: "contested-fact-pack",
+    label: "Contested fact pack",
+    mode: "text",
+    description: "Common myths that trigger the 'Side-by-Side Conflict' UI by hitting legacy vs modern consensus.",
+    challenge: "Dueling sources / Conflict",
+    talkingPoint: "Use this to dramatically show the 'Dueling Sources' UI when FactLens hits legitimate search-time disagreement.",
+    value:
+      "The Great Wall of China is the only man-made structure visible from space with the naked eye.",
+  },
 ];

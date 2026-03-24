@@ -2,6 +2,7 @@ import { Suspense, lazy, useCallback, useEffect, useState } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useNavigate } from "react-router-dom";
 
 import TopNavigation from "./components/TopNavigation";
+import NebulaBackground from "./components/NebulaBackground";
 import { fetchClaimDraft, fetchReports, openAnalysisStream } from "./lib/api";
 import {
   createSession,
@@ -112,6 +113,12 @@ function applyPayloadToSession(session, payload) {
         progress: { done: 0, total: payload.data?.total ?? 0 },
         lastUpdatedAt: timestamp,
       };
+    case "retrieving_query":
+      return {
+        ...session,
+        liveQuery: payload.data?.query ?? "",
+        lastUpdatedAt: timestamp,
+      };
     case "retrieving_progress":
       return {
         ...session,
@@ -127,6 +134,7 @@ function applyPayloadToSession(session, payload) {
         ...session,
         pipelineStage: "verifying",
         progress: { done: 0, total: payload.data?.total ?? 0 },
+        liveQuery: null,
         lastUpdatedAt: timestamp,
       };
     case "verifying_progress": {
@@ -609,8 +617,9 @@ function FactLensApp() {
   );
 
   return (
-    <>
-      <TopNavigation sessionCount={sessions.length} />
+    <div className="flex-1 flex flex-col relative min-h-screen">
+      <NebulaBackground />
+      <TopNavigation sessions={sessions} onReuseSession={reuseSessionInput} />
       <Suspense fallback={pageFallback}>
         <Routes>
           <Route
@@ -680,7 +689,7 @@ function FactLensApp() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>
-    </>
+    </div>
   );
 }
 

@@ -70,6 +70,36 @@ def _best_text(*candidates: str) -> str:
     return max(normalized, key=len)
 
 
+def _is_menu_heavy(text: str) -> bool:
+    if not text:
+        return True
+
+    lines = [line.strip() for line in text.split("\n") if line.strip()]
+    if not lines:
+        return True
+
+    # Heuristics for "menu-like" text:
+    # 1. High density of short lines
+    short_lines = [line for line in lines if len(line) < 50]
+    short_line_ratio = len(short_lines) / len(lines)
+
+    # 2. Too many lines relative to total characters
+    # (Typical articles have longer paragraphs, menus have many short lines)
+    char_count = len(text)
+    line_density = len(lines) / (char_count / 100) if char_count > 0 else 100
+
+    # 3. Presence of common navigation keywords at the start
+    nav_keywords = {"skip to", "sign in", "sign up", "menu", "search", "newsletter", "profile"}
+    start_keywords = sum(1 for line in lines[:10] if any(kw in line.lower() for kw in nav_keywords))
+
+    if short_line_ratio > 0.8 and line_density > 1.5:
+        return True
+    if start_keywords >= 4 and short_line_ratio > 0.6:
+        return True
+
+    return False
+
+
 def _extract_text_from_html(html: str, *, url: str) -> str:
     extracted = trafilatura.extract(
         html,
@@ -239,7 +269,7 @@ async def scrape_url(url: str) -> dict:
     fast_text = fast_capture.get("text", "")
     fast_media = fast_capture.get("media", [])
 
-    if len(fast_text) >= MIN_STRONG_TEXT_CHARS:
+    if len(fast_text) >= MIN_STRONG_TEXT_CHARS and not _is_menu_heavy(fast_text):
         return {
             "text": fast_text,
             "media": fast_media,

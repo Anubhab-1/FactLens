@@ -55,8 +55,9 @@ function getStatusMessage(stage, progress) {
   return "Waiting to start…";
 }
 
-function PipelineProgress({ stage, progress }) {
+function PipelineProgress({ stage, progress, liveQuery }) {
   const activeIndex = getActiveIndex(stage);
+  const showTerminal = (stage === "retrieving" || stage === "verifying") && liveQuery;
 
   return (
     <section className="glass-card-static rounded-[2rem] px-6 py-6 animate-fade-in-up gradient-border">
@@ -103,12 +104,33 @@ function PipelineProgress({ stage, progress }) {
         />
       </div>
 
-      <div className="mt-4 glass-pill rounded-2xl px-4 py-3 text-sm text-slate-300">
-        <span className="inline-flex items-center gap-2">
-          {stage !== "done" ? <span className="flex h-2 w-2"><span className="absolute inline-flex h-2 w-2 animate-ping rounded-full bg-blue-400 opacity-75" /><span className="relative inline-flex h-2 w-2 rounded-full bg-blue-500" /></span> : null}
-          {getStatusMessage(stage, progress)}
-        </span>
-      </div>
+      {/* Live Retrieval Trace Terminal */}
+      {showTerminal ? (
+        <div className="mt-5 overflow-hidden rounded-xl border border-white/5 bg-black/40 font-mono animate-fade-in">
+          <div className="flex items-center justify-between border-b border-white/5 bg-white/5 px-4 py-2">
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
+              <span className="text-[10px] font-bold uppercase tracking-widest text-blue-400">Live Retrieval Trace</span>
+            </div>
+            <span className="text-[9px] text-white/20 uppercase tracking-tighter">Strategizing...</span>
+          </div>
+          <div className="p-4">
+            <div className="flex items-start gap-3">
+              <span className="mt-1 text-blue-500/50 leading-none">{">"}</span>
+              <p className="text-xs leading-relaxed text-blue-100/90 italic drop-shadow-sm">
+                "{liveQuery}"
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="mt-4 glass-pill rounded-2xl px-4 py-3 text-sm text-slate-300">
+          <span className="inline-flex items-center gap-2">
+            {stage !== "done" ? <span className="flex h-2 w-2"><span className="absolute inline-flex h-2 w-2 animate-ping rounded-full bg-blue-400 opacity-75" /><span className="relative inline-flex h-2 w-2 rounded-full bg-blue-500" /></span> : null}
+            {getStatusMessage(stage, progress)}
+          </span>
+        </div>
+      )}
     </section>
   );
 }

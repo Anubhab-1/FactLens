@@ -79,10 +79,10 @@ function HomePage({ sessions, onUseSample, onReuseSession }) {
             <span className="label-cap">AI-powered fact verification</span>
             <h1
               className="mt-4 text-5xl font-extrabold text-white sm:text-6xl lg:text-7xl animate-fade-in-up delay-1"
-              style={{ lineHeight: "1.07", letterSpacing: "-0.03em" }}
+              style={{ lineHeight: "1", letterSpacing: "-0.04em" }}
             >
-              Verify any claim.<br />
-              <span style={{ color: "var(--blue-400)" }}>Transparently.</span>
+              <span className="shimmer-text">Verify any claim.</span><br />
+              <span className="text-gradient-nebula inline-block mt-2">Transparently.</span>
             </h1>
             <p
               className="mt-6 text-lg leading-relaxed max-w-xl animate-fade-in-up delay-2"

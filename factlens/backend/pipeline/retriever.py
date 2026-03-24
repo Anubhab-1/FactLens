@@ -13,6 +13,7 @@ from functools import partial
 import re
 from urllib.parse import parse_qs, quote, unquote, urlencode, urljoin, urlparse
 from urllib.request import Request, urlopen
+from typing import Any, Callable, Optional
 
 from bs4 import BeautifulSoup
 from langchain_community.tools.tavily_search import TavilySearchResults
@@ -75,7 +76,7 @@ from pipeline.scoring import (
 )
 
 llm, llm_descriptor = create_chat_model("retriever", temperature=0.1, max_tokens=2048)
-LLM_CALL_LOCK = asyncio.Lock()
+
 
 def _initialize_search_tool():
     """Initialize search tool with fallback options."""
@@ -653,13 +654,12 @@ async def _generate_queries(claim: dict) -> list[dict]:
     )
 
     try:
-        async with LLM_CALL_LOCK:
-            response = await llm.ainvoke(
-                [
-                    SystemMessage(content=QUERY_SYSTEM_PROMPT),
-                    HumanMessage(content=user_message),
-                ]
-            )
+        response = await llm.ainvoke(
+            [
+                SystemMessage(content=QUERY_SYSTEM_PROMPT),
+                HumanMessage(content=user_message),
+            ]
+        )
         query_objects = _parse_json_array(
             response.content if isinstance(response.content, str) else str(response.content)
         )
@@ -987,38 +987,87 @@ def _http_post_json(
     return parsed
 
 
-def _fetch_fallback_result(
-    url: str,
-    title: str,
-    snippet: str,
-    *,
-    published_date_hint: str = "unknown",
-) -> dict | None:
-    html = ""
+async def _fetch_fallback_result_async(url: str, title: str, snippet: str) -> dict | None:
+    """Async wrapper for fetching and cleaning fallback search result content."""
+    return await asyncio.to_thread(_fetch_fallback_result, url, title, snippet)
+
+
+def _fetch_fallback_result(url: str, title: str, snippet: str) -> dict | None:
+    """Synchronous fetching and cleaning of fallback search result content."""
     try:
         html = _http_get(url)
+        content = trafilatura.extract(html, include_links=False, include_images=False)
+        content = content or snippet
+        if _looks_like_binary_blob(content):
+            return None
+        if len(content) < MIN_FALLBACK_TEXT_CHARS:
+            return None
+
+        # Basic cleanup
+        content = re.sub(r"\s+", " ", content).strip()
+        return _build_search_api_result(url, title, content)
     except Exception:
-        html = ""
-
-    extracted_text = _extract_text_from_html(html, url=url) if html else ""
-    visible_text = _visible_text(html) if html else ""
-    content = extracted_text if len(extracted_text) >= len(visible_text) else visible_text
-    content = content or snippet
-    if _looks_like_binary_blob(content):
-        return None
-    if len(content) < MIN_FALLBACK_TEXT_CHARS:
         return None
 
-    published_date = _extract_published_date(html)
-    if published_date == "unknown":
-        published_date = _normalize_search_published_date(published_date_hint)
 
-    return {
-        "url": url,
-        "title": title or url,
-        "raw_content": content,
-        "published_date": published_date,
-    }
+async def _search_with_duckduckgo(query_text: str) -> list[dict]:
+    """Asynchronous DuckDuckGo search using parallel fetching."""
+    try:
+        url = f"https://duckduckgo.com/html/?q={quote_plus(query_text)}"
+        html = await asyncio.to_thread(_http_get, url)
+        soup = BeautifulSoup(html, "html.parser")
+        
+        candidates = []
+        for res in soup.select("a.result__a")[:5]: 
+            link = _extract_result_url(res.get("href"))
+            if not link: continue
+            res_title = res.get_text()
+            container = res.find_parent("div", class_="result")
+            snippet_node = container.select_one(".result__snippet") if container else None
+            snippet = snippet_node.get_text() if snippet_node else ""
+            candidates.append((link, res_title, snippet))
+        
+        if not candidates:
+            return []
+            
+        fetch_tasks = [
+            _fetch_fallback_result_async(link, title, snip) 
+            for link, title, snip in candidates[:3]
+        ]
+        results = await asyncio.gather(*fetch_tasks)
+        return [r for r in results if r]
+    except Exception:
+        return []
+
+
+async def _search_with_bing(query_text: str) -> list[dict]:
+    """Asynchronous Bing search using parallel fetching."""
+    try:
+        url = f"https://www.bing.com/search?q={quote_plus(query_text)}"
+        html = await asyncio.to_thread(_http_get, url)
+        soup = BeautifulSoup(html, "html.parser")
+        
+        candidates = []
+        for res in soup.select("li.b_algo h2 a")[:4]:
+            link = _extract_bing_result_url(res.get("href"))
+            if not link: continue
+            res_title = res.get_text()
+            candidates.append((link, res_title, ""))
+        
+        if not candidates:
+            return []
+            
+        fetch_tasks = [
+            _fetch_fallback_result_async(link, title, "") 
+            for link, title, _ in candidates[:3]
+        ]
+        results = await asyncio.gather(*fetch_tasks)
+        return [r for r in results if r]
+    except Exception:
+        return []
+
+
+
 
 
 def _build_search_api_result(
@@ -1048,69 +1097,6 @@ def _build_search_api_result(
         "published_date": _normalize_search_published_date(published_date),
     }
 
-
-def _duckduckgo_search_sync(query: str, max_results: int = FALLBACK_SEARCH_MAX_RESULTS) -> list[dict]:
-    html = _http_get(DUCKDUCKGO_SEARCH_URL, params={"q": query})
-    soup = BeautifulSoup(html, "html.parser")
-    results = []
-    seen_urls = set()
-
-    for link in soup.select("a.result__a"):
-        url = _extract_result_url(link.get("href", ""))
-        if not url or url in seen_urls:
-            continue
-
-        seen_urls.add(url)
-        title = link.get_text(" ", strip=True)
-        container = link.find_parent("div", class_="result") or link.parent
-        snippet_node = container.select_one(".result__snippet") if container else None
-        snippet = snippet_node.get_text(" ", strip=True) if snippet_node else ""
-
-        fetched = _fetch_fallback_result(url, title, snippet)
-        if fetched is None:
-            continue
-
-        results.append(fetched)
-        if len(results) >= max_results:
-            break
-
-    return results
-
-
-async def _search_with_duckduckgo(query: str) -> list[dict]:
-    return await _run_blocking(_duckduckgo_search_sync, query)
-
-
-def _bing_search_sync(query: str, max_results: int = FALLBACK_SEARCH_MAX_RESULTS) -> list[dict]:
-    html = _http_get(MICROSOFT_BING_SEARCH_URL, params={"q": query})
-    soup = BeautifulSoup(html, "html.parser")
-    results = []
-    seen_urls = set()
-
-    for link in soup.select("li.b_algo h2 a"):
-        url = _extract_bing_result_url(link.get("href", ""))
-        if not url or url in seen_urls:
-            continue
-
-        seen_urls.add(url)
-        title = link.get_text(" ", strip=True)
-        container = link.find_parent("li", class_="b_algo") or link.parent
-        snippet_node = container.select_one(".b_caption p") if container else None
-        snippet = snippet_node.get_text(" ", strip=True) if snippet_node else ""
-
-        fetched = _fetch_fallback_result(url, title, snippet)
-        if fetched is None:
-            continue
-
-        results.append(fetched)
-        if len(results) >= max_results:
-            break
-
-    return results
-
-
-async def _search_with_bing(query: str) -> list[dict]:
-    return await _run_blocking(_bing_search_sync, query)
 
 
 def _google_cse_search_sync(query: str, max_results: int = FALLBACK_SEARCH_MAX_RESULTS) -> list[dict]:
@@ -1289,7 +1275,7 @@ def _search_provider_specs(
 ) -> list[tuple[str, object, bool]]:
     specs: list[tuple[str, object, bool]] = []
     prefer_reference_first = not claim_time_sensitive and objective in {"direct", "authoritative"}
-    use_secondary_search_apis = search_tool is None
+    use_secondary_search_apis = True
 
     if search_tool is not None:
         specs.append(
@@ -1356,42 +1342,6 @@ def _search_provider_specs(
     return specs
 
 
-# Global circuit breaker state for search providers
-_search_provider_failures = {}
-_search_provider_last_failure = {}
-_search_provider_circuit_open = {}
-
-def _is_circuit_open(provider: str, failure_threshold: int = 3, timeout_seconds: int = 60) -> bool:
-    """Check if circuit breaker is open for a provider."""
-    if provider not in _search_provider_circuit_open:
-        return False
-    
-    if not _search_provider_circuit_open[provider]:
-        return False
-    
-    # Check if timeout has passed
-    last_failure = _search_provider_last_failure.get(provider, 0)
-    if time.time() - last_failure > timeout_seconds:
-        # Half-open state: allow one request to test
-        _search_provider_circuit_open[provider] = False
-        return False
-    
-    return True
-
-def _record_failure(provider: str):
-    """Record a failure for circuit breaker."""
-    _search_provider_failures[provider] = _search_provider_failures.get(provider, 0) + 1
-    _search_provider_last_failure[provider] = time.time()
-    
-    # Open circuit if threshold reached
-    if _search_provider_failures[provider] >= 3:
-        _search_provider_circuit_open[provider] = True
-
-def _record_success(provider: str):
-    """Record a success and reset failure count."""
-    if provider in _search_provider_failures:
-        _search_provider_failures[provider] = 0
-
 async def _attempt_search_provider(
     provider: str,
     search_coro_factory,
@@ -1409,7 +1359,9 @@ async def _attempt_search_provider(
         }
     
     try:
-        result = await asyncio.wait_for(search_coro_factory(), timeout=15.0)
+        # Reduced timeout for primary APIs to trigger fallbacks faster
+        provider_timeout = 7.0 if provider == "tavily" else 15.0
+        result = await asyncio.wait_for(search_coro_factory(), timeout=provider_timeout)
         normalized_results = _normalize_search_results(result)
         
         # Record success
@@ -1432,13 +1384,22 @@ async def _attempt_search_provider(
             "error": "Timeout",
         }
     except Exception as exc:
-        _record_failure(provider)
+        exc_str = str(exc)
+        # If rate limited (Error 432), open circuit for longer (1 hour)
+        if "432" in exc_str:
+            _record_failure(provider) # Sets initial failure
+            _search_provider_failures[provider] = 10 # Force well past threshold
+            _search_provider_circuit_open[provider] = True
+            _search_provider_last_failure[provider] = time.time() + 3600 # Artificially shift last failure
+        else:
+            _record_failure(provider)
+            
         return {
             "provider": provider,
             "results": [],
             "fallback_used": fallback_used,
             "warning": None,
-            "error": str(exc),
+            "error": exc_str,
         }
 
 
@@ -1801,7 +1762,7 @@ def _source_snapshot(url: str, title: str, content: str, passages: list[dict]) -
     }
 
 
-def _build_source_record(claim: dict, result: dict, query: dict) -> dict | None:
+def _build_source_record(claim: dict, result: dict, query: dict, provider: str = "unknown") -> dict | None:
     url = result.get("url", "")
     if not url:
         return None
@@ -1875,6 +1836,7 @@ def _build_source_record(claim: dict, result: dict, query: dict) -> dict | None:
         "query_objective": query.get("objective", "direct"),
         "query_phase": query.get("phase", "primary"),
         "source_snapshot": source_snapshot,
+        "provider": provider,
         "source_intelligence": {
             **source_origin_profile,
             "source_origin_label": source_origin_label(source_origin_profile["source_origin"]),
@@ -1912,10 +1874,27 @@ async def _execute_query_batch(
     claim: dict,
     queries: list[dict],
     candidate_sources: dict[str, dict],
+    progress_callback: Optional[Callable[[dict], Any]] = None,
 ) -> list[str]:
     query_errors = []
 
     async def _process_query(query: dict):
+        if progress_callback:
+            try:
+                # We don't want to block core retrieval if callback fails
+                # But since it's an async callback from main.py, we await it.
+                await progress_callback(
+                    {
+                        "type": "query_start",
+                        "claim_id": claim.get("id"),
+                        "query": query.get("query"),
+                        "objective": query.get("objective"),
+                        "phase": query.get("phase"),
+                    }
+                )
+            except Exception:
+                pass
+
         provider_attempts = []
         effective_attempt = None
         any_results = False
@@ -1938,7 +1917,7 @@ async def _execute_query_batch(
                 if not _result_matches_query_constraints(result, query):
                     continue
 
-                source = _build_source_record(claim, result, query)
+                source = _build_source_record(claim, result, query, provider=attempt["provider"])
                 if source is None:
                     continue
 
@@ -2213,13 +2192,12 @@ async def _plan_recovery_queries(
     )
 
     try:
-        async with LLM_CALL_LOCK:
-            response = await llm.ainvoke(
-                [
-                    SystemMessage(content=RECOVERY_SYSTEM_PROMPT),
-                    HumanMessage(content=user_message),
-                ]
-            )
+        response = await llm.ainvoke(
+            [
+                SystemMessage(content=RECOVERY_SYSTEM_PROMPT),
+                HumanMessage(content=user_message),
+            ]
+        )
         parsed = _parse_json_object(
             response.content if isinstance(response.content, str) else str(response.content)
         )
@@ -2283,12 +2261,17 @@ async def _plan_recovery_queries(
     }
 
 
-async def retrieve_evidence(claim: dict) -> dict:
+async def retrieve_evidence(
+    claim: dict,
+    progress_callback: Optional[Callable[[dict], Any]] = None,
+) -> dict:
     try:
         query_variants = await _generate_queries(claim)
         candidate_sources = {}
         _seed_source_article(claim, candidate_sources)
-        query_errors = await _execute_query_batch(claim, query_variants, candidate_sources)
+        query_errors = await _execute_query_batch(
+            claim, query_variants, candidate_sources, progress_callback=progress_callback
+        )
 
         ranked_sources = _select_diverse_sources(claim, list(candidate_sources.values()))
         recovery_reason = _recovery_reasons(claim, ranked_sources)
@@ -2309,7 +2292,9 @@ async def retrieve_evidence(claim: dict) -> dict:
             if recovery_queries:
                 query_variants.extend(recovery_queries)
                 query_errors.extend(
-                    await _execute_query_batch(claim, recovery_queries, candidate_sources)
+                    await _execute_query_batch(
+                        claim, recovery_queries, candidate_sources, progress_callback=progress_callback
+                    )
                 )
                 ranked_sources = _select_diverse_sources(claim, list(candidate_sources.values()))
                 remaining_recovery_reason = _recovery_reasons(claim, ranked_sources)
@@ -2327,7 +2312,12 @@ async def retrieve_evidence(claim: dict) -> dict:
                         query_variants.extend(heuristic_followup)
                         recovery_queries.extend(heuristic_followup)
                         query_errors.extend(
-                            await _execute_query_batch(claim, heuristic_followup, candidate_sources)
+                            await _execute_query_batch(
+                                claim,
+                                heuristic_followup,
+                                candidate_sources,
+                                progress_callback=progress_callback,
+                            )
                         )
                         ranked_sources = _select_diverse_sources(claim, list(candidate_sources.values()))
                         recovery_plan = {
