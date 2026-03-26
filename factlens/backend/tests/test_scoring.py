@@ -465,6 +465,39 @@ class ScoringTests(unittest.TestCase):
         self.assertEqual(verdict["verdict"], "PARTIALLY_TRUE")
         self.assertTrue(verdict["conflict_detected"])
 
+    def test_calibrate_verdict_keeps_single_medium_quality_source_unverifiable(self) -> None:
+        sources = [
+            {
+                "id": "S1",
+                "url": "https://example.com/blog-post",
+                "overall_score": 0.61,
+                "authority_score": 0.58,
+                "relevance_score": 0.79,
+                "recency_score": 0.82,
+                "published_date": "2026-03-20",
+                "evidence_passages": [
+                    {
+                        "text": "Mars has exactly two moons named Phobos and Deimos.",
+                        "score": 0.84,
+                    }
+                ],
+            }
+        ]
+        assessments = [
+            {
+                "source_id": "S1",
+                "stance": "SUPPORT",
+                "strength": 0.84,
+                "summary": "A single blog post supports the claim.",
+                "snippet_used": "Mars has exactly two moons named Phobos and Deimos.",
+            }
+        ]
+
+        verdict = calibrate_verdict(assessments, sources)
+
+        self.assertEqual(verdict["verdict"], "UNVERIFIABLE")
+        self.assertIn("The verdict relies on sparse evidence coverage.", verdict["risk_flags"])
+
     def test_calibrate_verdict_time_sensitive_claim_needs_dated_evidence(self) -> None:
         sources = [
             {
@@ -1319,6 +1352,182 @@ class ScoringTests(unittest.TestCase):
         self.assertEqual(stances["S1"], "CONFLICT")
         self.assertEqual(stances["S2"], "IRRELEVANT")
         self.assertEqual(stances["S3"], "CONFLICT")
+
+    def test_verify_claim_normalizes_role_assignment_claims_with_wrong_subject(self) -> None:
+        claim = {
+            "id": "1",
+            "claim": "The capital of Australia is Sydney.",
+            "claim_type": "entity",
+            "time_sensitive": False,
+        }
+        evidence = {
+            "claim_id": "1",
+            "sources": [
+                {
+                    "id": "S1",
+                    "title": "Sydney overview",
+                    "url": "https://example.org/sydney-overview",
+                    "domain": "example.org",
+                    "published_label": "2026-03-20",
+                    "authority_score": 0.74,
+                    "relevance_score": 0.64,
+                    "overall_score": 0.71,
+                    "published_date": "2026-03-20",
+                    "snippet": "Sydney is the capital city of the state of New South Wales.",
+                    "evidence_passages": [
+                        {
+                            "text": "Sydney is the capital city of the state of New South Wales.",
+                            "score": 0.78,
+                        }
+                    ],
+                },
+                {
+                    "id": "S2",
+                    "title": "Australia profile",
+                    "url": "https://example.net/australia-profile",
+                    "domain": "example.net",
+                    "published_label": "2026-03-19",
+                    "authority_score": 0.86,
+                    "relevance_score": 0.82,
+                    "overall_score": 0.8,
+                    "published_date": "2026-03-19",
+                    "snippet": "Australia's capital is Canberra.",
+                    "evidence_passages": [
+                        {
+                            "text": "Australia's capital is Canberra.",
+                            "score": 0.84,
+                        }
+                    ],
+                },
+                {
+                    "id": "S3",
+                    "title": "ACT overview",
+                    "url": "https://example.edu/act-overview",
+                    "domain": "example.edu",
+                    "published_label": "2026-03-18",
+                    "authority_score": 0.83,
+                    "relevance_score": 0.79,
+                    "overall_score": 0.78,
+                    "published_date": "2026-03-18",
+                    "snippet": "Canberra, the capital city of Australia, is situated within the territory.",
+                    "evidence_passages": [
+                        {
+                            "text": "Canberra, the capital city of Australia, is situated within the territory.",
+                            "score": 0.85,
+                        }
+                    ],
+                },
+            ],
+            "query_variants": [],
+            "retrieval_summary": {"source_count": 3},
+            "error": None,
+        }
+        llm = _QueuedVerifierLLM(
+            [
+                '{"reasoning":"The sources are mixed.","claim_requires_recency":false,"risk_flags":[],"source_assessments":[{"source_id":"S1","stance":"SUPPORT","strength":0.8,"summary":"Mentions Sydney as a capital city.","snippet_used":"Sydney is the capital city of the state of New South Wales."},{"source_id":"S2","stance":"MIXED","strength":0.6,"summary":"Mentions Australia\'s capital.","snippet_used":"Australia\'s capital is Canberra."},{"source_id":"S3","stance":"MIXED","strength":0.6,"summary":"Mentions Canberra and Australia.","snippet_used":"Canberra, the capital city of Australia, is situated within the territory."}]}',
+                '{"correction_needed": false, "suggested_verdict": "UNVERIFIABLE", "reasoning": ""}',
+            ]
+        )
+
+        with patch("pipeline.verifier.llm", new=llm):
+            result = asyncio.run(verify_claim(claim, evidence))
+
+        self.assertEqual(result["verdict"], "FALSE")
+        stances = {
+            item["source_id"]: item["stance"]
+            for item in result["base_source_assessments"]
+        }
+        self.assertEqual(stances["S1"], "CONFLICT")
+        self.assertEqual(stances["S2"], "CONFLICT")
+        self.assertEqual(stances["S3"], "CONFLICT")
+
+    def test_verify_claim_normalizes_superlative_role_claims(self) -> None:
+        claim = {
+            "id": "1",
+            "claim": "Sydney is the largest city in Australia.",
+            "claim_type": "comparison",
+            "time_sensitive": False,
+        }
+        evidence = {
+            "claim_id": "1",
+            "sources": [
+                {
+                    "id": "S1",
+                    "title": "Sydney profile",
+                    "url": "https://example.org/sydney-profile",
+                    "domain": "example.org",
+                    "published_label": "2026-03-20",
+                    "authority_score": 0.74,
+                    "relevance_score": 0.7,
+                    "overall_score": 0.72,
+                    "published_date": "2026-03-20",
+                    "snippet": "Sydney today is Australia's largest city and a major international centre of culture and finance.",
+                    "evidence_passages": [
+                        {
+                            "text": "Sydney today is Australia's largest city and a major international centre of culture and finance.",
+                            "score": 0.86,
+                        }
+                    ],
+                },
+                {
+                    "id": "S2",
+                    "title": "Melbourne population report",
+                    "url": "https://example.net/melbourne-report",
+                    "domain": "example.net",
+                    "published_label": "2026-03-19",
+                    "authority_score": 0.78,
+                    "relevance_score": 0.73,
+                    "overall_score": 0.77,
+                    "published_date": "2026-03-19",
+                    "snippet": "Melbourne has overtaken Sydney to become Australia's largest city by population.",
+                    "evidence_passages": [
+                        {
+                            "text": "Melbourne has overtaken Sydney to become Australia's largest city by population.",
+                            "score": 0.85,
+                        }
+                    ],
+                },
+                {
+                    "id": "S3",
+                    "title": "Population ranking",
+                    "url": "https://example.edu/population-ranking",
+                    "domain": "example.edu",
+                    "published_label": "2026-03-18",
+                    "authority_score": 0.82,
+                    "relevance_score": 0.76,
+                    "overall_score": 0.8,
+                    "published_date": "2026-03-18",
+                    "snippet": "The largest city in Australia is Melbourne.",
+                    "evidence_passages": [
+                        {
+                            "text": "The largest city in Australia is Melbourne.",
+                            "score": 0.84,
+                        }
+                    ],
+                },
+            ],
+            "query_variants": [],
+            "retrieval_summary": {"source_count": 3},
+            "error": None,
+        }
+        llm = _QueuedVerifierLLM(
+            [
+                '{"reasoning":"The sources mention Sydney and Melbourne.","claim_requires_recency":false,"risk_flags":[],"source_assessments":[{"source_id":"S1","stance":"MIXED","strength":0.6,"summary":"Mentions Sydney.","snippet_used":"Sydney today is Australia\'s largest city and a major international centre of culture and finance."},{"source_id":"S2","stance":"MIXED","strength":0.6,"summary":"Mentions Melbourne and Sydney.","snippet_used":"Melbourne has overtaken Sydney to become Australia\'s largest city by population."},{"source_id":"S3","stance":"MIXED","strength":0.6,"summary":"Mentions the largest city in Australia.","snippet_used":"The largest city in Australia is Melbourne."}]}',
+                '{"correction_needed": false, "suggested_verdict": "UNVERIFIABLE", "reasoning": ""}',
+            ]
+        )
+
+        with patch("pipeline.verifier.llm", new=llm):
+            result = asyncio.run(verify_claim(claim, evidence))
+
+        stances = {
+            item["source_id"]: item["stance"]
+            for item in result["base_source_assessments"]
+        }
+        self.assertEqual(stances["S1"], "SUPPORT")
+        self.assertEqual(stances["S2"], "CONFLICT")
+        self.assertEqual(stances["S3"], "CONFLICT")
+        self.assertEqual(result["verdict"], "FALSE")
 
     def test_verify_claim_uses_heuristics_to_rescue_direct_contextual_evidence(self) -> None:
         claim = {

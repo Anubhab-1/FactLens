@@ -408,7 +408,7 @@ test("workspace review flow renders extraction and authenticity panels", async (
   await page
     .getByPlaceholder("Paste an article, transcript, or social post to extract and verify its claims.")
     .fill("The city approved an $18 million budget in 2026.");
-  await page.getByRole("button", { name: "Review claims first" }).click();
+  await page.getByRole("button", { name: "Extract & Review" }).click();
 
   await expect(page.getByRole("heading", { name: /Edit the extracted claims before verification/i })).toBeVisible();
   await expect(page.getByText("Explicit review is required before verification.")).toBeVisible();
@@ -426,16 +426,17 @@ test("report page recalculates a claim after manual source review", async ({ pag
   await page.goto("/report/report-qa");
 
   await expect(page.getByRole("heading", { name: /Source stance override/i })).toBeVisible();
-  await expect(page.getByText("TRUE: 1")).toBeVisible();
+  await expect(page.getByText("Current SUPPORT")).toBeVisible();
 
   const reviewPanel = page.locator("section").filter({ hasText: "Source stance override" }).first();
   const sourceCard = reviewPanel.locator("article").filter({ hasText: "City records office" }).first();
   await sourceCard.getByRole("button", { name: "Conflict" }).click();
+  await expect(sourceCard.getByText("Current CONFLICT")).toBeVisible();
   await page.getByRole("button", { name: "Apply review" }).click();
 
   await expect(page.getByText("Manual review is active.")).toBeVisible();
-  await expect(page.getByText("FALSE: 1")).toBeVisible();
-  await expect(page.getByText("Manual source review is active.")).toBeVisible();
+  await expect(page.getByText(/Model verdict: TRUE at 86% confidence./i)).toBeVisible();
+  await expect(page.locator("#claim-1")).toContainText("Factually False");
   await expect(page.getByRole("link", { name: "JSON" })).toHaveAttribute(
     "href",
     `${API_ORIGIN}/reports/report-qa/export?share=share-token`,

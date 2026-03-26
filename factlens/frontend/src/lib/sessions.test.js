@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { loadStoredSessions, normalizeSession, sessionFromReport } from "./sessions";
+import {
+  getAverageResultConfidence,
+  getCredibilityScore,
+  loadStoredSessions,
+  normalizeSession,
+  sessionFromReport,
+} from "./sessions";
 
 describe("sessions", () => {
   beforeEach(() => {
@@ -76,5 +82,22 @@ describe("sessions", () => {
     expect(sessions).toHaveLength(1);
     expect(sessions[0].id).toBe("done-report");
     expect(sessions[0].status).toBe("done");
+  });
+
+  it("computes credibility score consistently from weighted verdicts and confidence", () => {
+    const results = [
+      { verdict: "TRUE", confidence: 0.9 },
+      { verdict: "PARTIALLY_TRUE", confidence: 0.7 },
+      { verdict: "UNVERIFIABLE", confidence: 0.5 },
+      { verdict: "FALSE", confidence: 0.8 },
+    ];
+
+    expect(getAverageResultConfidence(results)).toBe(0.725);
+    expect(getCredibilityScore(results)).toBe(31);
+  });
+
+  it("returns zero credibility for empty result sets", () => {
+    expect(getAverageResultConfidence([])).toBe(0);
+    expect(getCredibilityScore([])).toBe(0);
   });
 });

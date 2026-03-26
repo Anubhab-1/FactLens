@@ -54,7 +54,7 @@ const MEDIA_META = {
     Icon: Camera,
   },
   UNKNOWN: {
-    label: "Visual authenticity unavailable",
+    label: "Visual media review unavailable",
     tone: "border-slate-400/15 bg-slate-500/8 text-slate-200",
     glow: "glow-slate",
     barColor: "from-slate-500 to-slate-400",
@@ -66,7 +66,6 @@ function formatAnalysisMode(value) {
   const labels = {
     text_llm_stylistic_review: "Stylistic LLM review",
     specialized_classifier: "Specialized classifier",
-    vision_llm_heuristic: "Vision-LLM heuristic",
     disabled: "Disabled",
     unavailable: "Unavailable",
     none: "No media",
@@ -200,7 +199,7 @@ function AuthenticitySignalsPanel({ aiDetection, mediaDetection, compact = false
         <p className="label-cap">Authenticity Analysis</p>
         <h3 className="text-2xl font-bold text-white sm:text-3xl tracking-tight">Context signals, not truth verdicts</h3>
         <p className="mt-2 text-sm leading-7 text-slate-400">
-          These checks estimate whether the submitted text or media looks machine-generated. They help frame risk, but they do not determine factual accuracy on their own and media signals are not forensic proof.
+          These checks estimate whether the submitted text or media looks machine-generated. They help frame risk, but they do not determine factual accuracy on their own, and visual-media analysis only runs when a specialized classifier is available.
         </p>
       </div>
 

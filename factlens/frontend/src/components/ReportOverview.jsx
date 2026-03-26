@@ -1,6 +1,7 @@
 import { AlertCircle, CheckCircle2, Clock, Globe, Youtube, FileText, Zap } from "lucide-react";
 import {
   formatSessionDate,
+  getCredibilityScore,
   getFreshestEvidence,
   getSessionStats,
   getSessionTitle,
@@ -27,7 +28,7 @@ function StatItem({ icon: Icon, label, value, colorClass = "text-white" }) {
 
 function ReportOverview({ session }) {
   const stats = getSessionStats(session);
-  const credibilityScore = Math.round((stats.counts.TRUE / (stats.totalClaims || 1)) * 100);
+  const credibilityScore = getCredibilityScore(session?.results);
   
   const sourceIcon = {
     youtube: <Youtube className="h-4 w-4" />,

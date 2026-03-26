@@ -76,6 +76,14 @@ from pipeline.scoring import (
 )
 
 llm, llm_descriptor = create_chat_model("retriever", temperature=0.1, max_tokens=2048)
+_retriever_llm_lock: asyncio.Lock | None = None
+
+
+def _get_retriever_llm_lock() -> asyncio.Lock:
+    global _retriever_llm_lock
+    if _retriever_llm_lock is None:
+        _retriever_llm_lock = asyncio.Lock()
+    return _retriever_llm_lock
 
 
 def _initialize_search_tool():
@@ -276,6 +284,18 @@ def _build_claim_specific_queries(claim: dict, *, phase: str = "recovery") -> li
         add_query('"Earth has one natural satellite" moon', "direct")
         add_query("site:nasa.gov Earth only natural satellite Moon", "authoritative")
         add_query('"Earth one moon natural satellite"', "direct")
+    # NEW: Celestial Bodies (Planets, Moons, Stars)
+    elif any(word in lowered for word in ["planet", "moon", "star", "galaxy", "orbit", "celestial", "asteroid", "comet"]):
+        add_query(f'"{claim_text}" official NASA space facts', "authoritative")
+        add_query(f'site:nasa.gov OR site:esa.int OR site:jpl.nasa.gov "{claim_text}"', "authoritative")
+    # NEW: Historical Figures & Events
+    elif any(word in lowered for word in ["born", "died", "century", "dynasty", "empire", "war", "discovery", "discovered", "ancient", "medieval", "bc", "ad"]):
+        add_query(f'"{claim_text}" historical record verification', "direct")
+        add_query(f'site:britannica.com OR site:history.com OR site:archives.gov "{claim_text}"', "authoritative")
+    # NEW: Science & Technology
+    elif any(word in lowered for word in ["theory", "law of", "molecule", "atom", "gene", "dna", "particle", "physics", "chemistry", "biology", "invention", "invented"]):
+        add_query(f'"{claim_text}" scientific consensus peer-reviewed', "authoritative")
+        add_query(f'site:nature.com OR site:sciencemag.org OR site:nobelprize.org "{claim_text}"', "authoritative")
     elif "largest ocean" in lowered and "pacific" in lowered:
         add_query('"Pacific Ocean is the largest ocean"', "direct")
         add_query("site:noaa.gov Pacific Ocean largest ocean", "authoritative")
@@ -284,6 +304,17 @@ def _build_claim_specific_queries(claim: dict, *, phase: str = "recovery") -> li
         add_query('"Strait of Hormuz" oil chokepoint', "direct")
         add_query("site:eia.gov OR site:energy.gov Strait of Hormuz oil chokepoint", "authoritative")
         add_query('"Strait of Hormuz" oil transit chokepoint', "direct")
+    # NEW: Confirmation & Pseudoscience Heuristics
+    elif any(word in lowered for word in ["nasa", "nih", "who", "unicef", "harvard", "stanford", "mit"]) and any(word in lowered for word in ["confirm", "proven", "study", "trial", "secret", "hidden"]):
+        confirmer = next((w for w in ["nasa", "nih", "who", "unicef", "harvard", "stanford", "mit"] if w in lowered), "official")
+        add_query(f'site:{confirmer}.gov OR site:{confirmer}.edu "{claim_text}"', "authoritative")
+        add_query(f'"{claim_text}" debunked OR pseudoscience OR myth', "contradiction")
+        if "quantum" in lowered:
+            add_query(f'site:phys.org OR site:scientificamerican.com "{claim_text}" debunked', "authoritative")
+    elif any(word in lowered for word in ["clinically proven", "scientifically proven", "quantum healing", "energy fields", "cure chronic"]):
+        add_query(f'"{claim_text}" pseudoscience debunked', "contradiction")
+        add_query(f'site:quackwatch.org OR site:rationalwiki.org "{claim_text}"', "authoritative")
+        add_query(f'site:nih.gov OR site:pubmed.gov "{claim_text}"', "authoritative")
     elif leadership_match:
         role = leadership_match.group(1).strip()
         entity = leadership_match.group(2).strip()
@@ -654,12 +685,13 @@ async def _generate_queries(claim: dict) -> list[dict]:
     )
 
     try:
-        response = await llm.ainvoke(
-            [
-                SystemMessage(content=QUERY_SYSTEM_PROMPT),
-                HumanMessage(content=user_message),
-            ]
-        )
+        async with _get_retriever_llm_lock():
+            response = await llm.ainvoke(
+                [
+                    SystemMessage(content=QUERY_SYSTEM_PROMPT),
+                    HumanMessage(content=user_message),
+                ]
+            )
         query_objects = _parse_json_array(
             response.content if isinstance(response.content, str) else str(response.content)
         )
@@ -987,12 +1019,30 @@ def _http_post_json(
     return parsed
 
 
-async def _fetch_fallback_result_async(url: str, title: str, snippet: str) -> dict | None:
+async def _fetch_fallback_result_async(
+    url: str,
+    title: str,
+    snippet: str,
+    *,
+    published_date_hint: str = "unknown",
+) -> dict | None:
     """Async wrapper for fetching and cleaning fallback search result content."""
-    return await asyncio.to_thread(_fetch_fallback_result, url, title, snippet)
+    return await asyncio.to_thread(
+        _fetch_fallback_result,
+        url,
+        title,
+        snippet,
+        published_date_hint=published_date_hint,
+    )
 
 
-def _fetch_fallback_result(url: str, title: str, snippet: str) -> dict | None:
+def _fetch_fallback_result(
+    url: str,
+    title: str,
+    snippet: str,
+    *,
+    published_date_hint: str = "unknown",
+) -> dict | None:
     """Synchronous fetching and cleaning of fallback search result content."""
     try:
         html = _http_get(url)
@@ -1005,7 +1055,15 @@ def _fetch_fallback_result(url: str, title: str, snippet: str) -> dict | None:
 
         # Basic cleanup
         content = re.sub(r"\s+", " ", content).strip()
-        return _build_search_api_result(url, title, content)
+        normalized_content = _normalize_text(content)
+        if len(normalized_content) < MIN_SEARCH_SNIPPET_CHARS:
+            return None
+        return {
+            "url": url,
+            "title": title or url,
+            "raw_content": normalized_content,
+            "published_date": _normalize_search_published_date(published_date_hint),
+        }
     except Exception:
         return None
 
@@ -1875,14 +1933,13 @@ async def _execute_query_batch(
     queries: list[dict],
     candidate_sources: dict[str, dict],
     progress_callback: Optional[Callable[[dict], Any]] = None,
-) -> list[str]:
+) -> tuple[list[str], list[str]]:
     query_errors = []
+    empty_authoritative_queries = []
 
     async def _process_query(query: dict):
         if progress_callback:
             try:
-                # We don't want to block core retrieval if callback fails
-                # But since it's an async callback from main.py, we await it.
                 await progress_callback(
                     {
                         "type": "query_start",
@@ -1905,6 +1962,7 @@ async def _execute_query_batch(
             claim_time_sensitive=bool(claim.get("time_sensitive", False)),
         )
 
+        query_had_error = False
         for attempt in results_from_providers:
             normalized_results = attempt["results"]
             any_results = any_results or bool(normalized_results)
@@ -1912,12 +1970,18 @@ async def _execute_query_batch(
 
             if attempt.get("error"):
                 query_errors.append(str(attempt["error"]))
+                query_had_error = True
 
             for result in normalized_results:
                 if not _result_matches_query_constraints(result, query):
                     continue
 
-                source = _build_source_record(claim, result, query, provider=attempt["provider"])
+                source = _build_source_record(
+                    claim,
+                    result,
+                    query,
+                    provider=attempt.get("provider", "unknown"),
+                )
                 if source is None:
                     continue
 
@@ -1942,8 +2006,8 @@ async def _execute_query_batch(
             provider_attempts.append(provider_attempt)
 
             if added_source_count > 0:
-                effective_attempt = provider_attempt
-                break
+                if effective_attempt is None or provider_attempt["status"] == "ok":
+                    effective_attempt = provider_attempt
             if normalized_results and effective_attempt is None:
                 effective_attempt = provider_attempt
 
@@ -1957,11 +2021,12 @@ async def _execute_query_batch(
                 for item in provider_attempts
                 if item is not effective_attempt and str(item.get("error") or item.get("warning") or "").strip()
             ]
-            query["status"] = effective_attempt["status"] if provider_attempts else "empty"
+            query["status"] = effective_attempt["status"]
             query["result_count"] = effective_attempt["result_count"]
             query["provider"] = effective_attempt["provider"]
             query["fallback_used"] = bool(effective_attempt.get("fallback_used"))
             query["added_source_count"] = effective_attempt["added_source_count"]
+            
             warning_parts = [
                 *prior_messages,
                 *(
@@ -1974,17 +2039,18 @@ async def _execute_query_batch(
                 query["warning"] = "; ".join(dict.fromkeys(warning_parts))
             if effective_attempt.get("error"):
                 query["error"] = effective_attempt["error"]
-            if any_results and query["added_source_count"] == 0 and query["status"] == "empty":
-                query["status"] = "ok"
-        else:
-            query["status"] = "empty"
-            query["result_count"] = 0
-            query["added_source_count"] = 0
 
-    # EXECUTE ALL QUERIES IN THE BATCH IN PARALLEL
+        # Track evidence of absence for authoritative confirmation queries
+        if (
+            not any_results 
+            and not query_had_error 
+            and query.get("objective") == "authoritative"
+            and ("site:" in query["query"] or "official" in query["query"].lower())
+        ):
+            empty_authoritative_queries.append(query["query"])
+
     await asyncio.gather(*[_process_query(q) for q in queries])
-
-    return query_errors
+    return query_errors, empty_authoritative_queries
 
 
 def _recovery_reasons(claim: dict, ranked_sources: list[dict]) -> list[str]:
@@ -2192,12 +2258,13 @@ async def _plan_recovery_queries(
     )
 
     try:
-        response = await llm.ainvoke(
-            [
-                SystemMessage(content=RECOVERY_SYSTEM_PROMPT),
-                HumanMessage(content=user_message),
-            ]
-        )
+        async with _get_retriever_llm_lock():
+            response = await llm.ainvoke(
+                [
+                    SystemMessage(content=RECOVERY_SYSTEM_PROMPT),
+                    HumanMessage(content=user_message),
+                ]
+            )
         parsed = _parse_json_object(
             response.content if isinstance(response.content, str) else str(response.content)
         )
@@ -2269,9 +2336,12 @@ async def retrieve_evidence(
         query_variants = await _generate_queries(claim)
         candidate_sources = {}
         _seed_source_article(claim, candidate_sources)
-        query_errors = await _execute_query_batch(
+        
+        all_empty_authoritative = []
+        query_errors, empty_auth = await _execute_query_batch(
             claim, query_variants, candidate_sources, progress_callback=progress_callback
         )
+        all_empty_authoritative.extend(empty_auth)
 
         ranked_sources = _select_diverse_sources(claim, list(candidate_sources.values()))
         recovery_reason = _recovery_reasons(claim, ranked_sources)
@@ -2291,11 +2361,12 @@ async def retrieve_evidence(
             )
             if recovery_queries:
                 query_variants.extend(recovery_queries)
-                query_errors.extend(
-                    await _execute_query_batch(
-                        claim, recovery_queries, candidate_sources, progress_callback=progress_callback
-                    )
+                errs, empty_auth = await _execute_query_batch(
+                    claim, recovery_queries, candidate_sources, progress_callback=progress_callback
                 )
+                query_errors.extend(errs)
+                all_empty_authoritative.extend(empty_auth)
+                
                 ranked_sources = _select_diverse_sources(claim, list(candidate_sources.values()))
                 remaining_recovery_reason = _recovery_reasons(claim, ranked_sources)
                 if remaining_recovery_reason and recovery_plan["mode"] in {
@@ -2311,14 +2382,15 @@ async def retrieve_evidence(
                     if heuristic_followup:
                         query_variants.extend(heuristic_followup)
                         recovery_queries.extend(heuristic_followup)
-                        query_errors.extend(
-                            await _execute_query_batch(
-                                claim,
-                                heuristic_followup,
-                                candidate_sources,
-                                progress_callback=progress_callback,
-                            )
+                        errs, empty_auth = await _execute_query_batch(
+                            claim,
+                            heuristic_followup,
+                            candidate_sources,
+                            progress_callback=progress_callback,
                         )
+                        query_errors.extend(errs)
+                        all_empty_authoritative.extend(empty_auth)
+                        
                         ranked_sources = _select_diverse_sources(claim, list(candidate_sources.values()))
                         recovery_plan = {
                             "mode": "heuristic_after_llm",
@@ -2349,6 +2421,7 @@ async def retrieve_evidence(
             "query_variants": query_variants,
             "retrieval_summary": retrieval_summary,
             "sources": ranked_sources,
+            "empty_authoritative_queries": all_empty_authoritative,
             "error": "; ".join(query_errors) if query_errors and not ranked_sources else None,
         }
     except Exception as exc:

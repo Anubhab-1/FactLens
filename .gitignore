@@ -24,3 +24,9 @@ Thumbs.db
 
 # Reports storage
 reports/
+
+# Database
+factlens/backend/data/reports.db
+
+# Temporary Vite files
+factlens/frontend/vite.config.js.timestamp-*

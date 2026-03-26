@@ -134,8 +134,25 @@ CLAUSE_SPLIT_PATTERNS = (
     r"\s+\balthough\b\s+",
 )
 LOCATION_CONTAINMENT_PATTERN = re.compile(
-    r"^\s*(.+?)\s+(?:is|are|was|were|lies|lie)\s+(?:located\s+|situated\s+)?in\s+(.+?)[.?!]?\s*$",
+    r"^\s*(.+?)\s+(?:is|are|was|were|lies|lie|found|stands|stood)\s+(?:located\s+|situated\s+)?in\s+([^.!?]+)[.!?]?\s*$",
     re.IGNORECASE,
+)
+ROLE_ASSIGNMENT_PATTERNS = (
+    re.compile(
+        r"^\s*(?:the\s+)?(?P<role>[A-Za-z][A-Za-z\s-]{2,40}?)\s+(?:of|in)\s+(?P<context>.+?)\s+"
+        r"(?:is|was|are|were)\s+(?P<subject>.+?)[.!?]?\s*$",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"^\s*(?P<subject>.+?)\s+(?:is|was|are|were|became|becomes|remains)\s+(?:the\s+)?"
+        r"(?P<role>[A-Za-z][A-Za-z\s-]{2,40}?)\s+(?:of|in)\s+(?P<context>.+?)[.!?]?\s*$",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"^\s*(?P<context>.+?)['’]s\s+(?P<role>[A-Za-z][A-Za-z\s-]{2,40}?)\s+"
+        r"(?:is|was|are|were)\s+(?P<subject>.+?)[.!?]?\s*$",
+        re.IGNORECASE,
+    ),
 )
 GEO_DEMONYM_EQUIVALENTS = {
     "american": "united states",
@@ -171,6 +188,11 @@ GENERIC_LOCATION_TARGETS = {
     "southwest",
     "state",
     "west",
+}
+ROLE_EQUIVALENT_PATTERNS = {
+    "capital": r"(?:capital(?:\s+city)?|seat\s+of\s+government|national\s+capital|federal\s+capital)",
+    "largest_city": r"(?:(?:largest|biggest|most\s+populous)\s+city)",
+    "smallest_city": r"(?:smallest\s+city)",
 }
 
 
@@ -267,6 +289,128 @@ def _clean_location_candidate(value: str) -> str:
     return re.sub(r"^(?:is|was|are|were)\s+", "", cleaned, flags=re.IGNORECASE)
 
 
+def _normalize_role_label(value: str) -> str:
+    lowered = re.sub(r"\s+", " ", str(value or "").lower()).strip()
+    for role_key, pattern in ROLE_EQUIVALENT_PATTERNS.items():
+        if re.search(rf"\b{pattern}\b", lowered, re.IGNORECASE):
+            return role_key
+    return ""
+
+
+def _role_label_text(role_key: str) -> str:
+    labels = {
+        "capital": "capital",
+        "largest_city": "largest city",
+        "smallest_city": "smallest city",
+    }
+    return labels.get(role_key, role_key.replace("_", " "))
+
+
+def _clean_role_candidate(value: str) -> str:
+    cleaned = _clean_location_candidate(value)
+    cleaned = re.sub(r"\b(?:today|currently|now|officially)$", "", cleaned, flags=re.IGNORECASE).strip(" ,.")
+    return cleaned
+
+
+def _labels_match(left: str, right: str) -> bool:
+    normalized_left = _normalize_location_label(left)
+    normalized_right = _normalize_location_label(right)
+    if not normalized_left or not normalized_right:
+        return False
+    if normalized_left == normalized_right:
+        return True
+    if normalized_left in normalized_right and (len(normalized_left) / len(normalized_right)) >= 0.55:
+        return True
+    if normalized_right in normalized_left and (len(normalized_right) / len(normalized_left)) >= 0.55:
+        return True
+    return False
+
+
+def _role_assignment_claim_parts(claim: dict) -> tuple[str, str, str] | None:
+    claim_text = str(claim.get("claim", "") or "").strip()
+    for pattern in ROLE_ASSIGNMENT_PATTERNS:
+        match = pattern.search(claim_text)
+        if not match:
+            continue
+        role_key = _normalize_role_label(match.group("role"))
+        if not role_key:
+            continue
+        subject = _clean_role_candidate(match.group("subject"))
+        context = _clean_role_candidate(match.group("context"))
+        if len(tokenize(subject)) < 1 or len(tokenize(context)) < 1:
+            continue
+        return subject, role_key, context
+    return None
+
+
+def _extract_role_assignments(role_key: str, text: str) -> list[tuple[str, str]]:
+    normalized_text = " ".join(str(text or "").split())
+    if not normalized_text:
+        return []
+
+    role_pattern = ROLE_EQUIVALENT_PATTERNS.get(role_key)
+    if not role_pattern:
+        return []
+
+    patterns = (
+        rf"\b(?P<subject>[A-Za-z0-9][A-Za-z0-9 .'-]{{1,80}}?)\s+"
+        rf"(?:is|was|are|were|became|becomes|remains)\s+(?:the\s+)?{role_pattern}\s+(?:of|in)\s+"
+        rf"(?P<context>[A-Za-z0-9][A-Za-z0-9 .'-]{{1,80}}?)(?:[,.;]|\s+and\b|\s+but\b|$)",
+        rf"\b(?P<subject>[A-Za-z0-9][A-Za-z0-9 .'-]{{1,80}}?)\s+"
+        rf"(?:is|was|are|were|became|becomes|remains)\s+(?P<context>[A-Za-z0-9][A-Za-z0-9 .'-]{{1,80}}?)['’]s\s+"
+        rf"{role_pattern}(?:[,.;]|\s+and\b|\s+but\b|$)",
+        rf"\b(?P<context>[A-Za-z0-9][A-Za-z0-9 .'-]{{1,80}}?)['’]s\s+{role_pattern}\s+"
+        rf"(?:is|was|are|were)\s+(?P<subject>[A-Za-z0-9][A-Za-z0-9 .'-]{{1,80}}?)(?:[,.;]|\s+and\b|\s+but\b|$)",
+        rf"\b(?P<subject>[A-Za-z0-9][A-Za-z0-9 .'-]{{1,80}}?),\s+(?:the\s+)?{role_pattern}\s+(?:of|in)\s+"
+        rf"(?P<context>[A-Za-z0-9][A-Za-z0-9 .'-]{{1,80}}?)(?:[,.;]|\s+and\b|\s+but\b|$)",
+        rf"\b(?:the\s+)?{role_pattern}\s+(?:of|in)\s+(?P<context>[A-Za-z0-9][A-Za-z0-9 .'-]{{1,80}}?)\s+"
+        rf"(?:is|was|are|were)\s+(?P<subject>[A-Za-z0-9][A-Za-z0-9 .'-]{{1,80}}?)(?:[,.;]|\s+and\b|\s+but\b|$)",
+        rf"\b(?P<subject>[A-Za-z0-9][A-Za-z0-9 .'-]{{1,80}}?)\s+"
+        rf"(?:to\s+become|became|becomes|remains)\s+(?P<context>[A-Za-z0-9][A-Za-z0-9 .'-]{{1,80}}?)['’]s\s+"
+        rf"{role_pattern}(?:[,.;]|\s+by\b|$)",
+    )
+
+    assignments: list[tuple[str, str]] = []
+    seen: set[tuple[str, str]] = set()
+    segments = [
+        segment.strip()
+        for segment in re.split(r"(?<=[.!?])\s+|\n+", normalized_text)
+        if segment.strip()
+    ] or [normalized_text]
+    for segment in segments:
+        for pattern in patterns:
+            for match in re.finditer(pattern, segment, re.IGNORECASE):
+                subject = _clean_role_candidate(match.group("subject"))
+                context = _clean_role_candidate(match.group("context"))
+                if not subject or not context:
+                    continue
+                key = (_normalize_location_label(subject), _normalize_location_label(context))
+                if not all(key) or key in seen:
+                    continue
+                seen.add(key)
+                assignments.append((subject, context))
+    return assignments
+
+
+def _classify_role_assignment_relationship(claim: dict, source_text: str) -> tuple[str, str, str]:
+    role_claim = _role_assignment_claim_parts(claim)
+    if not role_claim:
+        return "", "", ""
+
+    claimed_subject, role_key, claimed_context = role_claim
+    assignments = _extract_role_assignments(role_key, source_text)
+    for candidate_subject, candidate_context in assignments:
+        same_subject = _labels_match(candidate_subject, claimed_subject)
+        same_context = _labels_match(candidate_context, claimed_context)
+        if same_subject and same_context:
+            return "support", candidate_subject, candidate_context
+        if same_context and not same_subject:
+            return "conflict", candidate_subject, candidate_context
+        if same_subject and not same_context:
+            return "conflict", candidate_subject, candidate_context
+    return "", "", ""
+
+
 def _extract_location_targets(subject: str, text: str) -> list[str]:
     normalized_text = " ".join(str(text or "").split())
     if not normalized_text:
@@ -274,20 +418,24 @@ def _extract_location_targets(subject: str, text: str) -> list[str]:
 
     escaped_subject = re.escape(subject.strip())
     patterns = (
-        rf"\b{escaped_subject}\b[^.!?;\n]{{0,120}}?\b(?:is|was|are|were|lies|lie)\s+"
-        rf"(?:located\s+|situated\s+)?in\s+([A-Za-z][A-Za-z .'-]{{1,48}}?)(?:[,.]|$)",
-        rf"\b{escaped_subject}\b[^.!?;\n]{{0,120}}?\b(?:capital|city)\b[^.!?;\n]{{0,80}}?\bof\s+"
-        rf"([A-Za-z][A-Za-z .'-]{{1,48}}?)(?:[,.]|$)",
-        rf"\b{escaped_subject}\b[^.!?;\n]{{0,120}}?\b([A-Za-z][A-Za-z .'-]{{1,48}}?)['’]s\s+capital(?:\s+city)?\b",
-        rf"\b([A-Za-z][A-Za-z-]+)\s+capital\b[^.!?;\n]{{0,80}}?\b{escaped_subject}\b",
-        rf"\b{escaped_subject}\b[^.!?;\n]{{0,80}}?\b([A-Za-z][A-Za-z-]+)\s+capital\b",
+        rf"\b{escaped_subject}\b[^,.!?;\n]{{0,60}}?\b(?:is|are|was|were|lies|lie|found|stands|stood)\s+"
+        rf"(?:located\s+|situated\s+)?in\s+([A-Za-z0-9][A-Za-z0-9 .'-]{{1,64}}?)(?:[,.;]|\s+and\s+|$)",
+        rf"\b{escaped_subject}\b[^,.!?;\n]{{0,60}}?\b(?:capital|city|landmark)\b[^,.!?;\n]{{0,40}}?\bof\s+"
+        rf"([A-Za-z0-9][A-Za-z0-9 .'-]{{1,64}}?)(?:[,.;]|$)",
+        rf"\b{escaped_subject}\b[^,.!?;\n]{{0,60}}?\b(?:orbits|is a moon of|is a satellite of)\s+([A-Za-z0-9][A-Za-z0-9 .'-]{{1,64}}?)(?:[,.;]|$)",
+        rf"\b{escaped_subject}\b[^,.!?;\n]{{0,60}}?\b(?:was born in|died in|occurred in|discovered in)\s+([A-Za-z0-9][A-Za-z0-9 .'-]{{1,64}}?)(?:[,.;]|$)",
+        rf"\b{escaped_subject}\b[^,.!?;\n]{{0,60}}?\b([A-Za-z0-9][A-Za-z0-9 .'-]{{1,64}}?)['’]s\s+(?:capital|city|landmark|famous|iconic)\b",
+        rf"\b([A-Za-z0-9][A-Za-z0-9 .'-]{{1,64}}?)\s+is\s+(?:home\s+to|where\s+.*is\s+located)\s+the\s+\b{escaped_subject}\b",
     )
     seen: set[str] = set()
     candidates: list[str] = []
 
     for pattern in patterns:
         for match in re.finditer(pattern, normalized_text, re.IGNORECASE):
-            candidate = _clean_location_candidate(match.group(1))
+            groups = [g for g in match.groups() if g]
+            if not groups:
+                continue
+            candidate = _clean_location_candidate(groups[0])
             normalized = _normalize_location_label(candidate)
             if (
                 not normalized
@@ -308,16 +456,35 @@ def _classify_location_relationship(claim: dict, source_text: str) -> tuple[str,
         return "", ""
 
     subject, claimed_location = location_parts
-    if not re.search(rf"\b{re.escape(subject)}\b", str(source_text or ""), re.IGNORECASE):
+    # Also try without "The" if it starts with it
+    subject_alt = subject[4:] if subject.lower().startswith("the ") else subject
+
+    has_subject = re.search(rf"\b{re.escape(subject)}\b", str(source_text or ""), re.IGNORECASE) or \
+                  re.search(rf"\b{re.escape(subject_alt)}\b", str(source_text or ""), re.IGNORECASE)
+    
+    if not has_subject:
         return "", ""
 
     claimed_normalized = _normalize_location_label(claimed_location)
-    for candidate in _extract_location_targets(subject, source_text):
+    targets = _extract_location_targets(subject, source_text) or _extract_location_targets(subject_alt, source_text)
+    
+    for candidate in targets:
         candidate_normalized = _normalize_location_label(candidate)
         if not candidate_normalized:
             continue
-        if candidate_normalized == claimed_normalized:
+        
+        # Stricter matching: The candidate must be an excellent match for the claimed location.
+        # "Paris" vs "Paris, France" -> Support.
+        # "Berlin" vs "Berlin, Germany" -> Support.
+        # BUT "Berlin" vs "Berlin, USA" -> Conflict (if we can be that precise).
+        
+        is_exact = candidate_normalized == claimed_normalized
+        is_part_of = candidate_normalized in claimed_normalized and (len(candidate_normalized) / len(claimed_normalized) > 0.4)
+        is_parent_of = claimed_normalized in candidate_normalized and (len(claimed_normalized) / len(candidate_normalized) > 0.4)
+
+        if is_exact or is_part_of or is_parent_of:
             return "support", candidate
+        
         return "conflict", candidate
 
     return "", ""
@@ -330,7 +497,8 @@ def _normalize_assessments_for_claim(
 ) -> list[dict]:
     natural_satellite_claim = _natural_satellite_claim(claim)
     location_claim = _location_claim_parts(claim)
-    if not natural_satellite_claim and not location_claim:
+    role_assignment_claim = _role_assignment_claim_parts(claim)
+    if not natural_satellite_claim and not location_claim and not role_assignment_claim:
         return assessments
 
     source_map = {
@@ -365,6 +533,53 @@ def _normalize_assessments_for_claim(
             )
             normalized.append(adjusted)
             continue
+
+        if role_assignment_claim:
+            claimed_subject, role_key, claimed_context = role_assignment_claim
+            relationship, related_subject, related_context = _classify_role_assignment_relationship(claim, source_text)
+            base_strength = max(
+                float(assessment.get("strength", 0.5) or 0.5),
+                float(source.get("overall_score", 0.0) or 0.0),
+                float(source.get("relevance_score", 0.0) or 0.0),
+                max(
+                    (float(passage.get("score", 0.0) or 0.0) for passage in source.get("evidence_passages", []) or []),
+                    default=0.0,
+                ),
+            )
+            adjusted = dict(assessment)
+            if relationship == "support":
+                adjusted["stance"] = "SUPPORT"
+                adjusted["strength"] = max(0.74, min(base_strength, 0.92))
+                adjusted["summary"] = (
+                    f"Directly identifies {claimed_subject} as the {_role_label_text(role_key)} of {claimed_context}."
+                )
+                normalized.append(adjusted)
+                continue
+            if relationship == "conflict":
+                adjusted["stance"] = "CONFLICT"
+                adjusted["strength"] = max(0.74, min(base_strength, 0.9))
+                if _labels_match(related_context, claimed_context) and not _labels_match(related_subject, claimed_subject):
+                    adjusted["summary"] = (
+                        f"Directly identifies {related_subject}, not {claimed_subject}, as the {_role_label_text(role_key)} of {claimed_context}."
+                    )
+                elif _labels_match(related_subject, claimed_subject) and not _labels_match(related_context, claimed_context):
+                    adjusted["summary"] = (
+                        f"Directly says {claimed_subject} is the {_role_label_text(role_key)} of {related_context}, not {claimed_context}."
+                    )
+                else:
+                    adjusted["summary"] = (
+                        f"Directly conflicts with the claimed {_role_label_text(role_key)} relationship."
+                    )
+                normalized.append(adjusted)
+                continue
+            if adjusted.get("stance") != "IRRELEVANT":
+                adjusted["stance"] = "IRRELEVANT"
+                adjusted["strength"] = min(float(adjusted.get("strength", 0.45) or 0.45), 0.45)
+                adjusted["summary"] = (
+                    "Mentions the named entity, but does not directly ground the claimed role assignment."
+                )
+                normalized.append(adjusted)
+                continue
 
         if location_claim:
             subject, claimed_location = location_claim
@@ -509,6 +724,14 @@ def _reflection_can_harden_verdict(result: dict, suggested_verdict: str) -> bool
         for source in aligned_sources
         if _source_has_direct_grounding(source) and float(source.get("authority_score", 0.0) or 0.0) >= 0.82
     )
+
+    # Evidence of Absence signal
+    empty_auth = result.get("empty_authoritative_queries", [])
+    has_absence_signal = len(empty_auth) > 0
+    
+    # Check if the auditor is correcting based on known myths or blatant contradictions
+    is_authoritative_debunk = suggested_verdict == "FALSE" and (has_absence_signal or authoritative_direct_count > 0)
+
     max_overall = max((float(source.get("overall_score", 0.0) or 0.0) for source in aligned_sources), default=0.0)
 
     # Allow hardening if opposing sources are weak or few
@@ -516,13 +739,21 @@ def _reflection_can_harden_verdict(result: dict, suggested_verdict: str) -> bool
         float(s.get("strength", 0.0) or 0.0) >= 0.65 # Strong opposition
         for s in opposing_sources
     )
-    if has_strong_opposition:
+    if has_strong_opposition and not is_authoritative_debunk:
         return False
     
     # Allow hardening if we have a solid consensus on one side
-    # NEW: Even more aggressive for FALSE cases where we have material conflict
-    if suggested_verdict == "FALSE" and len(aligned_sources) >= 1 and (authoritative_direct_count >= 1 or max_overall >= 0.8):
-        return True
+    # NEW: Much more aggressive for FALSE cases where we have absence signals or material conflict
+    if suggested_verdict == "FALSE":
+        if has_absence_signal:
+            return True
+        # Check if mixed evidence has a conflict lean
+        leaning_negative = any(
+            float(s.get("strength", 0.0) or 0.0) >= 0.4 and s.get("stance") == "MIXED"
+            for s in mixed_sources
+        )
+        if (len(aligned_sources) >= 1 or leaning_negative) and (authoritative_direct_count >= 1 or max_overall >= 0.75):
+            return True
     
     if (len(aligned_sources) >= 1 and authoritative_direct_count >= 1) or (len(aligned_sources) >= 1 and max_overall >= 0.9):
         return True
@@ -532,6 +763,7 @@ def _reflection_can_harden_verdict(result: dict, suggested_verdict: str) -> bool
         return True
     if len(aligned_sources) == 1 and authoritative_direct_count >= 1 and max_overall >= 0.9 and not mixed_sources:
         return True
+    
     return False
 
 
@@ -565,11 +797,33 @@ def _heuristic_assessment_for_source(claim: dict, source: dict) -> dict:
         passage_score,
     )
 
+    # Space and Location Entity Guards
+    space_entities = {"moon", "mars", "earth", "venus", "jupiter", "saturn", "mercury", "sun", "pluto"}
+    location_entities = {"delhi", "agra", "mumbai", "kolkata", "new delhi"}
+    
+    # Simple word-based check for common hallucinations
+    norm_claim = claim_text.lower()
+    norm_evidence = evidence_text.lower()
+    
+    found_space_in_claim = {e for e in space_entities if f" {e} " in f" {norm_claim} " or norm_claim.startswith(f"{e} ") or norm_claim.endswith( f" {e}")}
+    found_space_in_evidence = {e for e in space_entities if f" {e} " in f" {norm_evidence} " or norm_evidence.startswith(f"{e} ") or norm_evidence.endswith( f" {e}")}
+    
+    space_conflict = bool(found_space_in_claim and found_space_in_evidence and found_space_in_claim != found_space_in_evidence)
+    
+    # Specialized Location check
+    found_loc_in_claim = {e for e in location_entities if e in norm_claim}
+    found_loc_in_evidence = {e for e in location_entities if e in norm_evidence}
+    loc_conflict = bool(found_loc_in_claim and found_loc_in_evidence and found_loc_in_claim != found_loc_in_evidence)
+
     stance = "IRRELEVANT"
     strength = min(base_strength, 0.45)
     summary = "The grounded passage did not clearly resolve the claim."
 
-    if claim_numbers and overlap >= 0.45:
+    if space_conflict or loc_conflict:
+        stance = "CONFLICT"
+        strength = max(0.82, base_strength)
+        summary = "Entity mismatch: Claim and evidence discuss different celestial bodies or locations."
+    elif claim_numbers and overlap >= 0.45:
         if numeric_alignment >= 1.0 and not conflict_marker:
             stance = "SUPPORT"
             strength = max(0.72, base_strength)
@@ -599,6 +853,17 @@ def _heuristic_assessment_for_source(claim: dict, source: dict) -> dict:
         stance = "SUPPORT"
         strength = max(0.76, base_strength)
         summary = "The grounded passage directly states the claim."
+    elif (
+        stance == "IRRELEVANT"
+        and overlap >= 0.8
+        and passage_score >= 0.72
+        and not conflict_marker
+        and not hedge_marker
+        and not opinion_marker
+    ):
+        stance = "SUPPORT"
+        strength = max(0.7, min(base_strength, 0.88))
+        summary = "The grounded passage closely paraphrases the claim."
     elif (
         stance == "IRRELEVANT"
         and overlap >= 0.92
@@ -1240,7 +1505,8 @@ def _build_subclaim_results(
     claim: dict,
     sources: list[dict],
     *,
-    claim_requires_recency: bool,
+    claim_requires_recency: bool = False,
+    empty_authoritative_queries: list[str] = None,
 ) -> tuple[list[dict], dict]:
     subclaim_texts = _split_compound_claim_text(str(claim.get("claim", "") or ""))
     if not subclaim_texts:
@@ -1268,10 +1534,12 @@ def _build_subclaim_results(
             continue
 
         calibration = calibrate_verdict(
-            assessments,
-            sources,
+            assessments=assessments,
+            sources=sources,
+            claim_text=subclaim_text,
             claim_time_sensitive=bool(claim.get("time_sensitive", False)),
             claim_requires_recency=claim_requires_recency,
+            empty_authoritative_queries=empty_authoritative_queries,
         )
         calibration = _promote_sparse_subclaim_calibration(
             calibration,
@@ -1470,10 +1738,12 @@ def recalculate_claim_result(claim: dict, result: dict, overrides: dict[str, str
             )
 
     calibration = calibrate_verdict(
-        effective_assessments,
-        sources,
+        assessments=effective_assessments,
+        sources=sources,
+        claim_text=claim.get("claim", ""),
         claim_time_sensitive=bool(claim.get("time_sensitive", False)),
         claim_requires_recency=bool(result.get("claim_requires_recency", False)),
+        empty_authoritative_queries=result.get("empty_authoritative_queries", []),
     )
     conflict_summary = summarize_conflict_profile(
         claim,
@@ -1629,13 +1899,82 @@ async def _reflect_on_verdict(claim: dict, result: dict, session_claims: list[di
         return result
 
 
-async def verify_claim(claim: dict, evidence: dict, session_claims: list[dict] | None = None) -> dict:
-    if not evidence["sources"]:
-        return _fallback_response(
-            claim,
-            evidence,
-            "No evidence could be retrieved for this claim.",
+async def cross_claim_audit(results: list[dict]) -> list[dict]:
+    """
+    Perform a final session-wide audit to ensure logical consistency between ALL results.
+    If Claim A is TRUE and contradicts Claim B, Claim B must be corrected.
+    """
+    if llm is None or not results or len(results) < 2:
+        return results
+
+    results_summary = "\n".join(
+        f"Result {r['claim_id']}: '{r['claim']}' is {r['verdict']}."
+        for r in results
+    )
+
+    user_message = (
+        "You are the Lead Fact-Check Editor. Review these verified claims for the SAME document.\n\n"
+        f"{results_summary}\n\n"
+        "Identify any logical contradictions. For example, if one claim says an entity is in Location A and it is VERIFIED TRUE, "
+        "but another claim says the SAME entity is in Location B, the second claim MUST BE FACTUALLY FALSE.\n\n"
+        "Focus on: \n"
+        "1. Location contradictions for unique landmarks/entities.\n"
+        "2. Numeric contradictions (Statistics that cannot both be true simultaneously).\n"
+        "3. Temporal contradictions.\n\n"
+        "If you find a contradiction where one result is more definitive (TRUE/FALSE) than another (PARTIALLY_TRUE/UNVERIFIABLE), "
+        "the definitive one should dictate the correction for the others.\n\n"
+        "Return JSON: {'corrections': [{'claim_id': '...', 'new_verdict': '...', 'reasoning': '...'}]}"
+    )
+
+    try:
+        response = await llm.ainvoke(
+            [
+                SystemMessage(content="You are a senior fact-checking editor ensuring document-wide consistency."),
+                HumanMessage(content=user_message),
+            ]
         )
+        audit = _parse_json_object(
+            response.content if isinstance(response.content, str) else str(response.content)
+        )
+        
+        corrections = audit.get("corrections", [])
+        if not corrections:
+            return results
+
+        updated_results = []
+        for result in results:
+            updated = dict(result)
+            for corr in corrections:
+                if str(corr.get("claim_id")) == str(result.get("claim_id")):
+                    new_verdict = str(corr.get("new_verdict", "")).upper()
+                    if new_verdict in {"TRUE", "FALSE", "PARTIALLY_TRUE", "UNVERIFIABLE"} and new_verdict != result["verdict"]:
+                        reasoning = corr.get("reasoning", "Document-wide consistency check.")
+                        updated["verdict"] = new_verdict
+                        updated["reasoning"] = f"{updated['reasoning']} (Cross-Claim Audit: {reasoning})"
+                        updated["risk_flags"].append(f"Global Audit corrected this result for consistency: {reasoning}")
+                        if new_verdict in {"TRUE", "FALSE"}:
+                            updated["confidence"] = max(updated["confidence"], 0.75)
+            updated_results.append(updated)
+        
+        return updated_results
+    except Exception:
+        return results
+
+
+async def verify_claim(claim: dict, evidence: dict, session_claims: list[dict] | None = None) -> dict:
+    empty_authoritative_queries = evidence.get("empty_authoritative_queries", [])
+    if not evidence["sources"]:
+        # NEW: Even if no sources, if we have empty authoritative queries, 
+        # it might be FALSE instead of just UNVERIFIABLE.
+        if empty_authoritative_queries:
+            # We'll continue to calibrate_verdict which now handles this
+            pass
+        else:
+            return _fallback_response(
+                claim,
+                evidence,
+                "No evidence could be retrieved for this claim.",
+            )
 
     parsed: dict = {}
     llm_failure: str | None = None
@@ -1673,9 +2012,8 @@ async def verify_claim(claim: dict, evidence: dict, session_claims: list[dict] |
             f"EVIDENCE PASSAGES:\n{evidence_block}"
         )
 
-        # Self-consistency approach: run verification multiple times and aggregate results
-        verification_results = []
-        for i in range(3):  # Run 3 times for self-consistency
+        # Self-consistency approach: run verification multiple times and aggregate results (PARALLELIZED)
+        async def _run_single_verification():
             try:
                 response = await llm.ainvoke(
                     [
@@ -1684,10 +2022,9 @@ async def verify_claim(claim: dict, evidence: dict, session_claims: list[dict] |
                     ]
                 )
                 try:
-                    parsed_result = _parse_json_object(
+                    return _parse_json_object(
                         response.content if isinstance(response.content, str) else str(response.content)
                     )
-                    verification_results.append(parsed_result)
                 except Exception:
                     retry_response = await llm.ainvoke(
                         [
@@ -1701,17 +2038,20 @@ async def verify_claim(claim: dict, evidence: dict, session_claims: list[dict] |
                             ),
                         ]
                     )
-                    parsed_result = _parse_json_object(
+                    return _parse_json_object(
                         retry_response.content
                         if isinstance(retry_response.content, str)
                         else str(retry_response.content)
                     )
-                    verification_results.append(parsed_result)
             except Exception as exc:
-                # If one run fails, continue with others
+                nonlocal llm_failure
                 if not llm_failure:
                     llm_failure = str(exc)
-                continue
+                return None
+
+        # Execute 3 runs in parallel
+        raw_results = await asyncio.gather(*[_run_single_verification() for _ in range(3)])
+        verification_results = [r for r in raw_results if r is not None]
         
         # Aggregate results from multiple runs
         if verification_results:
@@ -1733,13 +2073,12 @@ async def verify_claim(claim: dict, evidence: dict, session_claims: list[dict] |
                     assessments_by_source[source_id] = []
                 assessments_by_source[source_id].append(assessment)
             
-            # Average the assessments for each source
+            # Average the strength values
             llm_assessments = []
             for source_id, assessments_list in assessments_by_source.items():
                 if not assessments_list:
                     continue
                 
-                # Average the strength values
                 total_strength = sum(a.get("strength", 0.0) for a in assessments_list)
                 avg_strength = total_strength / len(assessments_list)
                 
@@ -1764,6 +2103,8 @@ async def verify_claim(claim: dict, evidence: dict, session_claims: list[dict] |
                     "summary": summary,
                     "snippet_used": snippet_used,
                 })
+            # Use the first successful parsed result for other metadata like claim_requires_recency
+            parsed = verification_results[0] if verification_results else {}
         else:
             # All runs failed, fall back to single attempt
             try:
@@ -1833,18 +2174,22 @@ async def verify_claim(claim: dict, evidence: dict, session_claims: list[dict] |
         )
 
     calibration = calibrate_verdict(
-        assessments,
-        evidence["sources"],
+        assessments=assessments,
+        sources=evidence["sources"],
+        claim_text=claim.get("claim", ""),
         claim_time_sensitive=claim.get("time_sensitive", False),
         claim_requires_recency=bool(parsed.get("claim_requires_recency", False)),
+        empty_authoritative_queries=empty_authoritative_queries,
     )
     heuristic_calibration = None
     if normalized_llm_assessments and heuristic_assessments:
         heuristic_calibration = calibrate_verdict(
             heuristic_assessments,
             evidence["sources"],
+            claim_text=claim.get("claim", ""),
             claim_time_sensitive=claim.get("time_sensitive", False),
             claim_requires_recency=bool(parsed.get("claim_requires_recency", False)),
+            empty_authoritative_queries=empty_authoritative_queries,
         )
         calibration, cross_check_flags = _apply_assessment_cross_check(
             calibration,
@@ -1909,7 +2254,10 @@ async def verify_claim(claim: dict, evidence: dict, session_claims: list[dict] |
         claim,
         evidence["sources"],
         claim_requires_recency=bool(parsed.get("claim_requires_recency", False)),
+        empty_authoritative_queries=empty_authoritative_queries,
     )
+    final_result["subclaim_results"] = subclaim_results
+    final_result["subclaim_summary"] = subclaim_summary
     final_result = _apply_subclaim_synthesis(final_result, subclaim_results, subclaim_summary)
 
     # Run Reflection Auditor for high-stakes claims or low confidence
@@ -2076,6 +2424,13 @@ def _assemble_final_result(
             claim_requires_recency=bool(parsed.get("claim_requires_recency", False)),
         ),
         "base_source_assessments": base_source_assessments,
+        "empty_authoritative_queries": calibration.get("empty_authoritative_queries", []),
+        "subclaim_results": [],
+        "subclaim_summary": {
+            "count": 0,
+            "mixed_support": False,
+            "verdict_breakdown": {},
+            "synthesis_note": "",
+        },
         "manual_override": None,
     }
-

@@ -28,32 +28,35 @@ function getActiveIndex(stage) {
 }
 
 function getStatusMessage(stage, progress) {
-  if (stage === "extracting") {
-    return "Identifying and refining atomic claims…";
-  }
-  if (stage === "retrieving") {
-    return `Searching web & counter-evidence… (${progress.done}/${progress.total} claims)`;
-  }
-  if (stage === "verifying") {
-    return `Concurrent web search & CoT verification… (${progress.done}/${progress.total} claims)`;
-  }
-  if (stage === "reflecting") {
-    return "Performing session-wide consistency audit…";
-  }
-  if (stage === "detecting") {
-    return "Running AI authorship analysis…";
-  }
-  if (stage === "media_detecting") {
-    return "Reviewing extracted images for synthetic-media risk signals…";
-  }
-  if (stage === "scraping") {
-    return "Fetching and cleaning article text…";
-  }
-  if (stage === "done") {
-    return "Verification report ready.";
-  }
+  if (stage === "extracting") return "Identifying and refining atomic claims…";
+  if (stage === "retrieving") return `Searching web & counter-evidence… (${progress.done}/${progress.total} claims)`;
+  if (stage === "verifying") return `Concurrent web search & CoT verification… (${progress.done}/${progress.total} claims)`;
+  if (stage === "reflecting") return "Performing session-wide consistency audit…";
+  if (stage === "detecting") return "Running AI authorship analysis…";
+  if (stage === "media_detecting") return "Reviewing extracted images for synthetic-media risk signals…";
+  if (stage === "scraping") return "Fetching and cleaning article text…";
+  if (stage === "done") return "Verification report ready.";
   return "Waiting to start…";
 }
+
+const AGENT_THOUGHTS = {
+  extracting: [
+    "Synthesizing core intents...",
+    "Breaking down complex assertions...",
+    "Normalizing claims for retrieval..."
+  ],
+  verifying: [
+    "Cross-referencing multiple domains...",
+    "Detecting temporal contradictions...",
+    "Calibrating verdict based on source reputation...",
+    "Isolating semantic drift in evidence...",
+  ],
+  reflecting: [
+    "Auditing session-wide consistency...",
+    "Resolving inter-claim dependencies...",
+    "Finalizing grounded citations...",
+  ]
+};
 
 function PipelineProgress({ stage, progress, liveQuery }) {
   const activeIndex = getActiveIndex(stage);
@@ -117,9 +120,16 @@ function PipelineProgress({ stage, progress, liveQuery }) {
           <div className="p-4">
             <div className="flex items-start gap-3">
               <span className="mt-1 text-blue-500/50 leading-none">{">"}</span>
-              <p className="text-xs leading-relaxed text-blue-100/90 italic drop-shadow-sm">
-                "{liveQuery}"
-              </p>
+              <div className="space-y-1">
+                <p className="text-xs leading-relaxed text-blue-100/90 italic drop-shadow-sm">
+                  "{liveQuery}"
+                </p>
+                {AGENT_THOUGHTS[stage] && AGENT_THOUGHTS[stage].length > 0 && (
+                  <p className="text-[9px] font-mono text-blue-400/60 animate-pulse">
+                    Agent Process: {AGENT_THOUGHTS[stage][Math.floor((Date.now() / 3000) % AGENT_THOUGHTS[stage].length)]}
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         </div>

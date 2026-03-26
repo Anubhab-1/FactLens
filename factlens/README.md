@@ -47,7 +47,7 @@ Public repository: https://github.com/Anubhab-1/FactLens
 - Search fallback chain: Tavily, optional SerpApi, optional Google Custom Search, then DuckDuckGo/Bing HTML
 - Verification: source triage + calibrated verdict scoring
 - URL ingestion: Trafilatura with HTML fallback
-- Media authenticity: specialized classifier if configured, otherwise a clearly labeled vision-LLM heuristic
+- Media authenticity: specialized classifier if configured, otherwise an explicit unavailable status
 
 ## Run locally
 
@@ -132,9 +132,9 @@ npm run test:e2e
 - `FACTLENS_RATE_LIMIT_WRITE_REQUESTS`
 - `FACTLENS_RATE_LIMIT_ANALYZE_REQUESTS`
 
-### Specialized Media Classifier Setup (Optional for Bonus Points)
+### Specialized Media Classifier Setup (Optional)
 
-To enable the specialized media classifier for improved deepfake detection (earning the AI-Generated Media Detection bonus points):
+To enable specialized media analysis:
 
 1. Set `FACTLENS_MEDIA_DETECTOR_MODE=specialized` in your backend `.env` file
 2. Configure your specialized classifier endpoint:
@@ -197,4 +197,4 @@ For the strongest live URL demo, configure at least one search API beyond the HT
 - Frontend unit tests currently pass with `npm run test -- --run`.
 - Frontend browser smoke tests currently pass with `npm run test:e2e`.
 - Frontend production build currently passes with `npm run build`.
-- The NVIDIA vision endpoint emits a non-fatal warning during backend tests about model typing.
+- FactLens no longer falls back to a vision LLM for media-authenticity review when no specialized classifier is configured.

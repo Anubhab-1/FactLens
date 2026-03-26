@@ -286,6 +286,19 @@ SCOPE_QUALIFIER_MARKERS = (
     " context ",
     " caveat ",
 )
+ABSOLUTE_QUALIFIERS = {
+    "entirely",
+    "completely",
+    "only",
+    "all",
+    "always",
+    "never",
+    "exclusively",
+    "solely",
+    "must",
+    "impossible",
+    "cannot"
+}
 CONTRADICTION_TYPE_META = {
     "direct_debunking": {
         "label": "Direct debunking",
@@ -539,18 +552,29 @@ def normalize_url(url: str) -> str:
 
 
 def classify_claim_type(claim: str) -> str:
-    lowered = (claim or "").lower()
+    # Strip citation numbers and notes like [1], [a], [update] to avoid false numeric classification
+    clean_claim = re.sub(r"\[(?:\d+|[a-z]|update|citation\s+needed)\]", "", claim or "", flags=re.IGNORECASE)
+    lowered = clean_claim.lower()
 
     if '"' in lowered or "“" in lowered or "”" in lowered:
         return "quote"
-    if re.search(r"\b(\d+(\.\d+)?%|\d[\d,]*(\.\d+)?|million|billion|trillion)\b", lowered):
+    
+    if re.search(
+        r"\b\d+(?:\.\d+)?%|\b\d[\d,]*(?:\.\d+)?\s*(million|billion|trillion|thousand)\b",
+        lowered,
+    ):
         return "numeric"
+
+    # Keep plain years and named dates classified as dates when no stronger numeric signal exists.
     if re.search(
         r"\b(january|february|march|april|may|june|july|august|september|october|november|december|"
         r"\d{4}|today|yesterday|tomorrow)\b",
         lowered,
     ):
         return "date"
+        
+    if re.search(r"\b(\d+(\.\d+)?%|\d[\d,]*(\.\d+)?|million|billion|trillion)\b", lowered):
+        return "numeric"
     if re.search(r"\b(more than|less than|higher than|lower than|ranked|largest|smallest|compared to)\b", lowered):
         return "comparison"
     if re.search(r"\b(because|caused|causes|led to|results in|due to|triggered)\b", lowered):
@@ -1367,13 +1391,30 @@ def summarize_conflict_profile(
 def calibrate_verdict(
     assessments: Iterable[dict],
     sources: Iterable[dict],
+    claim_text: str = "",
     claim_time_sensitive: bool = False,
     claim_requires_recency: bool = False,
     auditor_decision: str = None,
+    empty_authoritative_queries: list[str] = None,
 ) -> dict:
     sources_by_id = {source["id"]: dict(source) for source in sources}
     support_score = 0.0
     conflict_score = 0.0
+    
+    # NEW: Evidence of Absence (Authoritative Penalty)
+    empty_queries = empty_authoritative_queries or []
+    for query in empty_queries:
+        # If we specifically searched an authoritative site and found NOTHING,
+        # and that site is mentioned in the claim (e.g. NASA confirmed...),
+        # it's a strong sign of a fabrication/myth.
+        query_lowered = query.lower()
+        if "site:" in query_lowered:
+            domain = query_lowered.split("site:")[1].split()[0]
+            # Simple check if domain keywords are in the claim
+            domain_name = domain.split(".")[0]
+            if domain_name in claim_text.lower() and len(domain_name) > 2:
+                conflict_score += 0.55 # High penalty for non-existent authoritative "proof"
+                
     relevant_sources = []
     support_items = []
     conflict_items = []
@@ -1467,6 +1508,38 @@ def calibrate_verdict(
         (float(source.get("authority_score", 0.0) or 0.0) for source in conflict_items),
         default=0.0,
     )
+    max_support_grounding = max(
+        (
+            max(
+                float(source.get("relevance_score", 0.0) or 0.0),
+                max(
+                    (
+                        float(passage.get("score", 0.0) or 0.0)
+                        for passage in source.get("evidence_passages", []) or []
+                    ),
+                    default=0.0,
+                ),
+            )
+            for source in support_items
+        ),
+        default=0.0,
+    )
+    max_conflict_grounding = max(
+        (
+            max(
+                float(source.get("relevance_score", 0.0) or 0.0),
+                max(
+                    (
+                        float(passage.get("score", 0.0) or 0.0)
+                        for passage in source.get("evidence_passages", []) or []
+                    ),
+                    default=0.0,
+                ),
+            )
+            for source in conflict_items
+        ),
+        default=0.0,
+    )
     dated_relevant_count = sum(
         1 for source in relevant_sources if parse_published_date(source.get("published_date")) is not None
     )
@@ -1546,6 +1619,42 @@ def calibrate_verdict(
         and support_score <= max(0.12, conflict_score * 0.15)
         and conflict_score >= 1.0
     )
+    dominant_conflict_consensus = (
+        conflict_count >= 2
+        and strong_conflict_count >= 2
+        and grounded_conflict_count >= 2
+        and conflict_score >= 1.1
+        and conflict_score >= max(0.9, support_score * 1.8)
+        and support_count <= 1
+        and support_score <= max(0.7, conflict_score * 0.55)
+        and (
+            authoritative_conflict_count >= 1
+            or max_conflict_authority >= max(0.78, max_support_authority)
+            or max_conflict_grounding >= max(0.78, max_support_grounding)
+        )
+    )
+    decisive_single_support = (
+        support_count == 1
+        and conflict_count == 0
+        and not mixed_items
+        and grounded_support_count >= 1
+        and max_support_authority >= 0.95
+        and max_support_grounding >= 0.78
+        and support_score >= 0.5
+    )
+    decisive_single_conflict = (
+        conflict_count == 1
+        and support_count == 0
+        and not mixed_items
+        and grounded_conflict_count >= 1
+        and max_conflict_authority >= 0.95
+        and max_conflict_grounding >= 0.78
+        and conflict_score >= 0.5
+    )
+    if decisive_single_support or decisive_single_conflict:
+        heuristic_flags.append(
+            "The verdict rests on a single highly authoritative grounded source, so corroboration would still improve confidence."
+        )
 
     # Relax thresholds for definitive verdicts when we have strong indicators
     has_myth_signal = any(_myth_aware_boost(s.get("snippet", "")) > 0 for s in relevant_sources)
@@ -1562,43 +1671,68 @@ def calibrate_verdict(
         # If we have hoax signals, increase the conflict score's weight
         conflict_score += 0.5
     
-    if relevant_count == 0 or max_score < 0.38: # Raised floor from 0.28 to prevent noise-based TRUE/FALSE
+    verdict = "UNVERIFIABLE"
+    if has_myth_signal and conflict_score >= 0.5 and support_score <= 0.25:
+        verdict = "FALSE"
+    elif (relevant_count == 0 or max_score < 0.38) and conflict_score < 0.5: # Raised floor from 0.28 to prevent noise-based TRUE/FALSE
         verdict = "UNVERIFIABLE"
+    elif relevant_count == 0 and conflict_score >= 0.55: # Even with 0 sources, if we have high negative signals
+        verdict = "FALSE"
     elif lacks_temporal_grounding and material_conflict:
         verdict = "UNVERIFIABLE"
     elif lacks_temporal_grounding:
         verdict = "PARTIALLY_TRUE" if max_score >= 0.8 and not material_conflict else "UNVERIFIABLE"
+    elif dominant_conflict_consensus:
+        verdict = "FALSE"
     elif material_conflict:
         verdict = "PARTIALLY_TRUE"
     elif clean_support_consensus:
         verdict = "TRUE"
     elif clean_conflict_consensus:
         verdict = "FALSE"
-    # New: Decisive path for authoritative sparse evidence
-    elif support_score >= 0.4 and conflict_score == 0.0: # Definitive path for zero-competition TRUE
+    elif decisive_single_support:
         verdict = "TRUE"
-    elif conflict_score >= 0.4 and support_score == 0.0: # Definitive path for zero-competition FALSE
+    elif decisive_single_conflict:
         verdict = "FALSE"
     # NEW: Trust the auditor for simple false claims with minor noise
     elif auditor_decision == "FALSE" and conflict_score >= 0.55 and conflict_score > (support_score * 1.4):
         verdict = "FALSE"
-    # Updated: Allow more leakage (0.3 instead of 0.1 ratio) when the opposition is very weak (< 0.3)
-    elif support_score >= 0.6 and (conflict_score <= support_score * 0.15 or conflict_score < 0.3) and max_support_authority >= 0.65:
+    elif (
+        support_count >= 2
+        and support_score >= 0.6
+        and (conflict_score <= support_score * 0.15 or conflict_score < 0.3)
+        and max_support_authority >= 0.65
+    ):
         verdict = "TRUE"
-    elif conflict_score >= 0.6 and (support_score <= conflict_score * 0.15 or support_score < 0.3) and max_conflict_authority >= 0.65:
-        verdict = "FALSE"
-    elif support_score >= 0.8 and conflict_score <= support_score * 0.25: 
-        verdict = "TRUE"
-    elif conflict_score >= 0.8 and support_score <= conflict_score * 0.25: 
-        verdict = "FALSE"
-    elif has_myth_signal and conflict_score >= 0.5 and support_score <= 0.25: 
-        verdict = "FALSE" 
-    elif relevant_count >= 1 and not conflict_detected and max_score >= 0.6: # Lowered from 0.65
-        verdict = "TRUE" if support_score > conflict_score else "FALSE"
-    elif relevant_count >= 2 and (conflict_detected and margin < 0.5): # Use material conflict threshold
-        verdict = "PARTIALLY_TRUE"
-    else:
-        verdict = "UNVERIFIABLE"
+    
+    # NEW: Absolute Qualifier Sensitivity
+    # If a claim uses "entirely", "only", etc., and there is ANY material conflict,
+    # it should be FALSE, not PARTIALLY_TRUE.
+    if verdict == "PARTIALLY_TRUE" and claim_text:
+        lowered_claim = claim_text.lower()
+        has_absolute = any(f" {q} " in f" {lowered_claim} " for q in ABSOLUTE_QUALIFIERS)
+        if has_absolute and conflict_score >= 0.4:
+            verdict = "FALSE"
+            heuristic_flags.append(
+                f"Verdict adjusted to FALSE because the claim makes an absolute assertion ('{next(q for q in ABSOLUTE_QUALIFIERS if f' {q} ' in f' {lowered_claim} ')}') which is contradicted by evidence."
+            )
+
+    if verdict == "UNVERIFIABLE":
+        if (
+            conflict_count >= 2
+            and conflict_score >= 0.6
+            and (support_score <= conflict_score * 0.15 or support_score < 0.3)
+            and max_conflict_authority >= 0.65
+        ):
+            verdict = "FALSE"
+        elif support_count >= 2 and support_score >= 0.8 and conflict_score <= support_score * 0.25:
+            verdict = "TRUE"
+        elif conflict_count >= 2 and conflict_score >= 0.8 and support_score <= conflict_score * 0.25:
+            verdict = "FALSE"
+        elif relevant_count >= 2 and not conflict_detected and max_score >= 0.6:
+            verdict = "TRUE" if support_score > conflict_score else "FALSE"
+        elif relevant_count >= 2 and conflict_detected and margin < 0.5 and not lacks_temporal_grounding:
+            verdict = "PARTIALLY_TRUE"
 
     confidence = (
         0.28
@@ -1607,6 +1741,11 @@ def calibrate_verdict(
         + (0.17 * clarity)
         + (0.13 * effective_freshness)
     )
+    
+    # NEW: Handle 0 sources case for negative signals
+    if relevant_count == 0 and conflict_score >= 0.5:
+        confidence = 0.58 # Moderate confidence in the absence of evidence for official claims
+        
     if material_conflict:
         confidence -= 0.18
     if verdict == "PARTIALLY_TRUE":
@@ -1615,7 +1754,7 @@ def calibrate_verdict(
         confidence = min(confidence, 0.46)
     if lacks_temporal_grounding:
         confidence -= 0.18
-    if relevant_count < 2:
+    if relevant_count < 2 and not (relevant_count == 0 and conflict_score >= 0.5):
         confidence -= 0.08
     confidence = clamp(confidence, 0.05, 0.97)
 
@@ -1642,4 +1781,5 @@ def calibrate_verdict(
         "mixed_evidence": mixed_items,
         "neutral_evidence": neutral_items,
         "risk_flags": heuristic_flags,
+        "empty_authoritative_queries": empty_authoritative_queries or [],
     }

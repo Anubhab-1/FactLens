@@ -329,19 +329,24 @@ async def _verify_claim_with_context(claim: dict, evidence: dict, claims: list[d
         return await verify_claim(claim, evidence)
 
 
-async def _stream_retrieval_and_verification(claims: list[dict], _emit):
+async def _stream_retrieval_and_verification(claims: list[dict]):
     total_claims = len(claims)
     event_queue = asyncio.Queue()
     
     async def _push(payload: dict):
-        await event_queue.put(_emit(payload))
+        await event_queue.put(payload)
 
     async def _process_single_claim(claim: dict):
         async def _on_query(data: dict):
             await _push({"type": "retrieving_query", "data": data})
         
         # Step 1: Retrieve evidence with live query updates
-        evidence = await retrieve_evidence(claim, progress_callback=_on_query)
+        try:
+            evidence = await retrieve_evidence(claim, progress_callback=_on_query)
+        except TypeError as exc:
+            if "progress_callback" not in str(exc):
+                raise
+            evidence = await retrieve_evidence(claim)
         
         # Step 2: Verify claim immediately with full claims list as context
         result = await _verify_claim_with_context(claim, evidence, claims)
@@ -349,9 +354,11 @@ async def _stream_retrieval_and_verification(claims: list[dict], _emit):
 
     async def _producer():
         completed_verifications = 0
+        all_results = []
         try:
-            async for _item, result in _run_with_limit(claims, _process_single_claim, limit=10):
+            async for _item, result in _run_with_limit(claims, _process_single_claim, limit=8):
                 completed_verifications += 1
+                all_results.append(result)
                 await _push({"type": "verifying_progress", "data": result})
                 await _push(
                     {
@@ -362,24 +369,36 @@ async def _stream_retrieval_and_verification(claims: list[dict], _emit):
                         },
                     }
                 )
+
+
+            
+            # Global Consistency Audit
+            if len(all_results) > 1:
+                from pipeline.verifier import cross_claim_audit
+                await _push({"type": "reflecting_start"})
+                audited_results = await cross_claim_audit(all_results)
+                for audited in audited_results:
+                    # Only push if it changed
+                    orig = next((r for r in all_results if r['claim_id'] == audited['claim_id']), None)
+                    if orig and (orig['verdict'] != audited['verdict'] or len(audited['risk_flags']) > len(orig['risk_flags'])):
+                        await _push({"type": "verifying_progress", "data": audited})
+                
         except Exception as exc:
             await _push({"type": "error", "message": f"Verification failed: {exc}"})
         finally:
             await event_queue.put(None) # Sentinel
 
-    yield _emit({"type": "verifying_start", "data": {"total": total_claims}})
+    yield {"type": "verifying_start", "data": {"total": total_claims}}
     
     producer_task = asyncio.create_task(_producer())
     
     while True:
-        event = await event_queue.get()
-        if event is None:
+        payload = await event_queue.get()
+        if payload is None:
             break
-        yield event
+        yield payload
     
     await producer_task
-    
-    yield _emit({"type": "reflecting_start"})
     await asyncio.sleep(0.5) 
 
 
@@ -436,7 +455,18 @@ async def apply_request_security(request: Request, call_next):
 
 @app.get("/health")
 async def health() -> dict:
-    return {"status": "ok"}
+    import os
+    keys = {
+        "NVIDIA": bool(os.getenv("NVIDIA_API_KEY")),
+        "TAVILY": bool(os.getenv("TAVILY_API_KEY")),
+        "SERPER": bool(os.getenv("SERPER_API_KEY")),
+        "OPENAI": bool(os.getenv("OPENAI_API_KEY")),
+    }
+    return {
+        "status": "ok",
+        "keys": keys,
+        "environment": "production" if os.getenv("FACTLENS_DATABASE_URL") else "development"
+    }
 
 
 @app.get("/reports")
@@ -688,6 +718,8 @@ async def analyze(request: Request, payload: AnalyzeRequest) -> StreamingRespons
             report = save_report(report)
             return _sse(payload)
 
+
+
         def _start_report() -> dict:
             nonlocal report
             report = build_report_record(
@@ -815,15 +847,20 @@ async def analyze(request: Request, payload: AnalyzeRequest) -> StreamingRespons
             if not claims and extraction["meta"].get("error"):
                 raise ValueError(extraction["meta"]["error"])
 
-            async for chunk in _stream_retrieval_and_verification(claims, _emit):
-                yield chunk
+            has_error = False
+            async for item in _stream_retrieval_and_verification(claims):
+                if item.get("type") == "error":
+                    has_error = True
+                yield _emit(item)
 
-            yield _emit(
-                {
-                    "type": "done",
-                    "data": {"report_id": report["id"], "completed_at": _utc_now()},
-                }
-            )
+            if not has_error:
+                yield _emit(
+                    {
+                        "type": "done",
+                        "data": {"report_id": report["id"], "completed_at": _utc_now()},
+                    }
+                )
+
         except Exception as exc:
             if report is None:
                 yield _sse(
@@ -918,8 +955,8 @@ async def analyze_reviewed(
                 }
             )
 
-            async for chunk in _stream_retrieval_and_verification(normalized_claims, _emit):
-                yield chunk
+            async for item in _stream_retrieval_and_verification(normalized_claims):
+                yield _emit(item)
 
             yield _emit(
                 {

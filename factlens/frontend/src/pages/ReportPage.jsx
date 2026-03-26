@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, Download, Pin, RefreshCcw, Trash2 } from "lucide-react";
+import { ArrowLeft, Download, Pin, RefreshCcw, Trash2, Presentation } from "lucide-react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 import AuthenticitySignalsPanel from "../components/AuthenticitySignalsPanel";
@@ -12,6 +12,7 @@ import ReportOverview from "../components/ReportOverview";
 import SourceCapturePanel from "../components/SourceCapturePanel";
 import SourceReviewPanel from "../components/SourceReviewPanel";
 import SourceTimeline from "../components/SourceTimeline";
+import GlobalEvidenceGraph from "../components/GlobalEvidenceGraph";
 import {
   deleteReport,
   fetchReport,
@@ -242,6 +243,13 @@ function ReportPage({ sessions, onHydrateReport, onRemoveReport, onReuseSession,
           >
             {shareState === "copied" ? "✓ Copied!" : "Share link"}
           </button>
+          <button
+            onClick={handleShare}
+            className="btn-primary text-xs !bg-blue-600 !border-blue-400 !shadow-blue"
+          >
+            <Presentation className="h-3.5 w-3.5" />
+            Presentation Link
+          </button>
           {session.reportId && (
             <a
               href={getReportExportUrl(session.reportId, {
@@ -273,6 +281,11 @@ function ReportPage({ sessions, onHydrateReport, onRemoveReport, onReuseSession,
 
       {/* ── Overview Hero ────────────────────────────────────────── */}
       <ReportOverview session={session} />
+
+      {/* ── Global Topology View ──────────────────────────────────── */}
+      <section className="animate-fade-in-up delay-[400ms] w-full min-h-[500px]">
+        <GlobalEvidenceGraph session={session} />
+      </section>
 
       {/* ── Main 2-column grid ───────────────────────────────────── */}
       <main className="grid gap-10 lg:grid-cols-[1fr_360px]">

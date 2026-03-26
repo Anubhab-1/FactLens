@@ -1,5 +1,6 @@
 import ClaimCard from "./ClaimCard";
 import { Link } from "react-router-dom";
+import { getAverageResultConfidence, getCredibilityScore } from "../lib/sessions";
 
 const VERDICT_META = {
   TRUE: {
@@ -52,17 +53,8 @@ function AccuracyReport({ results, claims }) {
     { TRUE: 0, FALSE: 0, PARTIALLY_TRUE: 0, UNVERIFIABLE: 0 },
   );
 
-  const avgConfidence = verifiedCount
-    ? Math.round((results.reduce((sum, result) => sum + (result.confidence || 0), 0) / verifiedCount) * 100)
-    : 0;
-
-  const credibilityScore = verifiedCount
-    ? Math.round(
-        ((counts.TRUE * 1.0 + counts.PARTIALLY_TRUE * 0.5 + counts.UNVERIFIABLE * 0.2) / verifiedCount) *
-          (avgConfidence / 100) *
-          100,
-      )
-    : 0;
+  const avgConfidence = Math.round(getAverageResultConfidence(results) * 100);
+  const credibilityScore = getCredibilityScore(results);
 
   const credibilityColor =
     credibilityScore >= 70
@@ -71,9 +63,6 @@ function AccuracyReport({ results, claims }) {
       ? { text: "text-amber-400", glow: "glow-amber", label: "Mixed Consensus" }
       : { text: "text-rose-400", glow: "glow-rose", label: "Low Integrity" };
 
-  const getReportRouteId = (activeSession) => {
-    return activeSession?.id;
-  };
 
   return (
     <section className="animate-fade-in space-y-12">
@@ -83,7 +72,7 @@ function AccuracyReport({ results, claims }) {
         {verifiedCount > 0 && (
           <div className={`glass-card rounded-[2rem] p-8 flex flex-col justify-between ${credibilityColor.glow}`}>
             <div className="space-y-4">
-              <span className="label-cap">Integrity Score</span>
+              <span className="label-cap">Credibility Score</span>
               <div className="flex flex-col">
                 <span className={`font-display text-7xl font-bold shimmer-text leading-tight ${credibilityColor.text}`}>
                   {credibilityScore}%
@@ -94,7 +83,7 @@ function AccuracyReport({ results, claims }) {
               </div>
             </div>
             <p className="mt-8 text-xs leading-relaxed" style={{ color: "var(--ink-2)" }}>
-              A weighted composite of source authority, claim types, and cross-reference confidence.
+              A weighted blend of the verdict mix and the average verification confidence across analyzed claims.
             </p>
           </div>
         )}

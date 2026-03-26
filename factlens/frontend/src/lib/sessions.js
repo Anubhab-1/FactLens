@@ -255,6 +255,36 @@ export function getSessionStats(session) {
   };
 }
 
+export function getAverageResultConfidence(results) {
+  const verifiedResults = Array.isArray(results) ? results : [];
+  if (!verifiedResults.length) {
+    return 0;
+  }
+
+  return verifiedResults.reduce((sum, result) => sum + Number(result?.confidence || 0), 0) / verifiedResults.length;
+}
+
+export function getCredibilityScore(results) {
+  const verifiedResults = Array.isArray(results) ? results : [];
+  if (!verifiedResults.length) {
+    return 0;
+  }
+
+  const counts = verifiedResults.reduce(
+    (accumulator, result) => ({
+      ...accumulator,
+      [result.verdict]: (accumulator[result.verdict] || 0) + 1,
+    }),
+    { TRUE: 0, FALSE: 0, PARTIALLY_TRUE: 0, UNVERIFIABLE: 0 },
+  );
+  const weightedVerdictScore =
+    (counts.TRUE * 1.0 + counts.PARTIALLY_TRUE * 0.5 + counts.UNVERIFIABLE * 0.2) /
+    verifiedResults.length;
+  const averageConfidence = getAverageResultConfidence(verifiedResults);
+
+  return Math.round(weightedVerdictScore * averageConfidence * 100);
+}
+
 export function getSessionTitle(session) {
   const firstClaim = session?.claims?.[0]?.claim?.trim();
   if (firstClaim) {

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowRight, BookOpenText, ChevronRight, Search } from "lucide-react";
+import { ArrowRight, BookOpenText, ChevronRight, Search, Check, LoaderCircle } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import AccuracyReport from "../components/AccuracyReport";
@@ -11,6 +11,7 @@ import InputPanel from "../components/InputPanel";
 import PipelineProgress from "../components/PipelineProgress";
 import SessionCard from "../components/SessionCard";
 import SourceCapturePanel from "../components/SourceCapturePanel";
+import ApiHealthPanel from "../components/ApiHealthPanel";
 import { sampleInputs } from "../data/sampleInputs";
 import { getReportRouteId } from "../lib/sessions";
 
@@ -189,18 +190,29 @@ function WorkspacePage({
 
                     {/* Completion banner */}
                     {!hasReviewDraft && activeSession?.status === "done" && (
-                      <div className="glass-card-static flex items-center justify-between gap-6 rounded-3xl border border-emerald-500/20 bg-emerald-500/10 p-8 animate-fade-in-up">
-                        <div className="space-y-1">
-                          <p className="text-base font-bold text-emerald-400">Analysis Complete</p>
-                          <p className="text-sm" style={{ color: "var(--ink-2)" }}>
-                            The multi-agent consensus report is now ready for review.
-                          </p>
+                      <div className="glass-card-static flex flex-col sm:flex-row items-center justify-between gap-6 rounded-[2.5rem] border border-emerald-500/20 bg-emerald-500/10 p-10 animate-fade-in-up relative overflow-hidden group">
+                        {/* Animated background accent */}
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 blur-[80px] -mr-32 -mt-32 animate-pulse" />
+                        <div className="absolute bottom-0 left-0 w-32 h-32 bg-emerald-500/5 blur-[60px] -ml-16 -mb-16" />
+                        
+                        <div className="space-y-4 relative z-10 text-center sm:text-left">
+                          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/30">
+                            <Check className="h-3 w-3 text-emerald-400" />
+                            <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">Protocol Success</span>
+                          </div>
+                          <div className="space-y-1">
+                            <h3 className="text-2xl font-bold text-white">Consensus Reached</h3>
+                            <p className="text-sm max-w-md leading-relaxed" style={{ color: "var(--ink-2)" }}>
+                              The multi-agent validation protocol has finalized its audit. A high-fidelity consensus report is now available.
+                            </p>
+                          </div>
                         </div>
                         <Link
                           to={`/report/${getReportRouteId(activeSession)}`}
-                          className="btn-primary text-sm shadow-emerald"
+                          className="btn-primary btn-shimmer group-hover:scale-105 transition-transform text-sm px-8 py-4 shadow-emerald relative z-10"
                         >
-                          View Full Report
+                          Access Intelligence Report
+                          <ArrowRight className="h-4 w-4" />
                         </Link>
                       </div>
                     )}
@@ -229,6 +241,8 @@ function WorkspacePage({
 
         {/* ── Sidebar ──────────────────────────────────────────── */}
         <aside className="min-w-0 space-y-8">
+          
+          <ApiHealthPanel />
 
           {/* Quick presets */}
           <div className="glass-card-static glass-card-inner-glow p-5 space-y-4">

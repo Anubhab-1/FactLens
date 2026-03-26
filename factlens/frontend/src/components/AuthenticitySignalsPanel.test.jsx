@@ -28,30 +28,27 @@ describe("AuthenticitySignalsPanel", () => {
     expect(screen.getByText(/This is a stylistic estimate, not proof of authorship/i)).toBeInTheDocument();
   });
 
-  it("downscopes media results into risk signals and exposes method caveats", () => {
+  it("shows explicit unavailability when no specialized media classifier is available", () => {
     render(
       <AuthenticitySignalsPanel
         aiDetection={null}
         mediaDetection={{
-          label: "NO_STRONG_SIGNAL",
-          ai_probability: 0.21,
-          explanation: "No strong synthetic-media cues were returned.",
-          signals_found: ["no obvious artifact clusters"],
-          analysis_mode: "vision_llm_heuristic",
-          provider_label: "NVIDIA",
-          model: "meta/llama-3.2-90b-vision-instruct",
+          label: "UNKNOWN",
+          ai_probability: null,
+          explanation: "Visual media authenticity review is unavailable because no specialized classifier endpoint is configured.",
+          signals_found: [],
+          analysis_mode: "unavailable",
           review_recommended: true,
-          warnings: ["This is a heuristic synthetic-media review, not a forensic deepfake determination."],
-          limitations: ["This result comes from a general vision LLM, not a forensic deepfake classifier."],
+          warnings: ["Visual media review is unavailable because FactLens no longer uses the vision-LLM fallback."],
+          limitations: [],
           media_url: "https://images.example/photo.png",
         }}
       />,
     );
 
-    expect(screen.getByText("No strong synthetic-media signal")).toBeInTheDocument();
-    expect(screen.getByText(/Vision-LLM heuristic via NVIDIA/i)).toBeInTheDocument();
-    expect(screen.getByText(/not a forensic deepfake determination/i)).toBeInTheDocument();
-    expect(screen.getByText(/not a forensic deepfake classifier/i)).toBeInTheDocument();
+    expect(screen.getByText("Visual media review unavailable")).toBeInTheDocument();
+    expect(screen.getByText(/^Unavailable$/i)).toBeInTheDocument();
+    expect(screen.getByText(/no longer uses the vision-LLM fallback/i)).toBeInTheDocument();
   });
 
   it("stacks cards in compact mode for narrow sidebar layouts", () => {

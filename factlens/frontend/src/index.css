@@ -216,6 +216,31 @@ h1, h2, h3, h4, h5, .font-display {
 .btn-primary:active { transform: scale(0.97); }
 .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
 
+.btn-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.btn-shimmer::after {
+  content: "";
+  position: absolute;
+  top: -50%; left: -50%;
+  width: 200%; height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0) 40%,
+    rgba(255, 255, 255, 0.4) 50%,
+    rgba(255, 255, 255, 0) 60%,
+    transparent 100%
+  );
+  transform: rotate(25deg);
+  animation: shimmer-btn 3s infinite;
+}
+@keyframes shimmer-btn {
+  0%   { left: -100%; top: -100%; }
+  100% { left: 100%; top: 100%; }
+}
+
 .btn-secondary {
   display: inline-flex;
   align-items: center;
@@ -270,6 +295,28 @@ h1, h2, h3, h4, h5, .font-display {
 .animate-fade-in-up { animation: fade-up 0.8s var(--ease-circ) both; }
 .animate-fade-in    { animation: fade-in 0.6s var(--ease-out) both; }
 
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; box-shadow: 0 0 20px var(--blue-glow); }
+  50% { opacity: 0.8; box-shadow: 0 0 40px var(--blue-glow); }
+}
+.animate-pulse-glow { animation: pulse-glow 2s infinite ease-in-out; }
+
+@keyframes gradient-flow {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+.animate-gradient-flow { 
+  background-size: 200% 200%;
+  animation: gradient-flow 6s linear infinite; 
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.9); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.animate-scale-in { animation: scale-in 0.4s var(--ease-circ) both; }
+
 /* Staggers */
 .delay-1 { animation-delay: 0.1s; }
 .delay-2 { animation-delay: 0.2s; }
@@ -291,3 +338,6 @@ h1, h2, h3, h4, h5, .font-display {
 .glow-emerald { box-shadow: 0 0 20px rgba(16,185,129,0.08), inset 0 0 0 1px rgba(16,185,129,0.1); }
 .glow-rose    { box-shadow: 0 0 20px rgba(244,63,94,0.08),  inset 0 0 0 1px rgba(244,63,94,0.1);  }
 .glow-blue    { box-shadow: 0 0 20px rgba(59,130,246,0.08),  inset 0 0 0 1px rgba(59,130,246,0.1); }
+
+.shadow-emerald { box-shadow: 0 10px 40px -10px rgba(16, 185, 129, 0.4); }
+.shadow-blue    { box-shadow: 0 10px 40px -10px rgba(59, 130, 246, 0.4); }

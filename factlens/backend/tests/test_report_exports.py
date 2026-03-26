@@ -40,9 +40,11 @@ def build_completed_report(report_id: str) -> dict:
         "signals_found": ["no obvious artifact clusters"],
         "explanation": "No strong synthetic-media cues were returned.",
         "media_url": "https://images.example/photo.png",
-        "analysis_mode": "vision_llm_heuristic",
-        "warnings": ["This is a heuristic synthetic-media review, not a forensic deepfake determination."],
-        "limitations": ["This result comes from a general vision LLM, not a forensic deepfake classifier."],
+        "analysis_mode": "specialized_classifier",
+        "provider_label": "Specialized classifier",
+        "model": "classifier.example",
+        "warnings": [],
+        "limitations": ["Classifier outputs should still be treated as risk signals until a human reviewer confirms the result."],
     }
     report["results"] = [
         {

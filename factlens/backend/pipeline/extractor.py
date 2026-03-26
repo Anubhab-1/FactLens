@@ -12,29 +12,34 @@ from pipeline.scoring import classify_claim_type, infer_time_sensitivity, tokeni
 llm, llm_descriptor = create_chat_model("extractor", temperature=0.1, max_tokens=2048)
 
 EXTRACTION_CHUNK_TRIGGER_CHARS = 5000
-EXTRACTION_CHUNK_MAX_CHARS = 3500
-EXTRACTION_CHUNK_MAX_SENTENCES = 10
-EXTRACTION_MAX_CLAIMS = 24
-EXTRACTION_MAX_CHUNKS = 8
-EXTRACTION_DIRECT_MAX_CHARS = 4500
+EXTRACTION_CHUNK_MAX_CHARS = 5000
+EXTRACTION_CHUNK_MAX_SENTENCES = 30
+EXTRACTION_MAX_CLAIMS = 60
+EXTRACTION_MAX_CHUNKS = 20
+EXTRACTION_DIRECT_MAX_CHARS = 6000
 
-SYSTEM_PROMPT = """You are a precise fact-checking assistant. Your job is to extract every
-verifiable, atomic factual claim from the provided text.
+SYSTEM_PROMPT = """You are a highly granular, high-recall fact-checking assistant. Your job is to extract EVERY
+verifiable, atomic factual claim from the provided text, with a special focus on:
+- Historical figures, dates, and world-shaping events.
+- Scientific discoveries, laws of nature, and technological breakthroughs.
+- Celestial bodies (planets, stars, galaxies) and space mission details.
+- Famous landmarks, artworks, and cultural achievements.
 
 Rules you must follow:
-1. Each claim must be a single, independently verifiable statement of fact.
-2. Do NOT include opinions, predictions, or subjective statements.
-3. Do NOT rephrase -- preserve the original meaning exactly.
-4. If a claim is time-sensitive (mentions current leaders, prices, rankings,
+1. Be COMPREHENSIVE: Do not skip details. Extract granular facts even if they seem minor.
+2. Each claim must be a single, independently verifiable statement of fact.
+3. Do NOT include opinions, predictions, or subjective statements.
+4. Do NOT rephrase -- preserve the original specific names and data points exactly.
+5. If a claim is time-sensitive (mentions current leaders, prices, rankings,
    recent events), add 'time_sensitive: true' in the object.
-5. Return ONLY a valid JSON array. No explanation, no markdown, no preamble.
+6. Return ONLY a valid JSON array. No explanation, no markdown, no preamble.
 
 Output format:
 [
   {
     'id': '1',
-    'claim': 'The exact verifiable statement',
-    'context': 'The surrounding sentence for reference',
+    'claim': 'The atomic verifiable statement',
+    'context': 'The original sentence for reference',
     'time_sensitive': false
   }
 ]"""
@@ -81,37 +86,29 @@ def _non_empty_lines(text: str) -> list[str]:
 
 
 def _normalize_text(text: str) -> str:
-    return re.sub(r"\s+", " ", (text or "").strip())
+    # Strip Wikipedia-style citations and notes:
+    # 1. Numeric citations: [1], [12][34]
+    # 2. Alphabetic footnotes: [a], [b]
+    # 3. Special tags: [update], [citation needed]
+    # We replace with a space to ensure we don't accidentally merge two sentences
+    # if a citation was between them without a space (e.g., "End.[1]Next").
+    text = re.sub(r"\[(?:\d+|[a-z]|update|citation\s+needed)\]", " ", text or "", flags=re.IGNORECASE)
+    return re.sub(r"\s+", " ", text.strip())
 
 
 def _looks_like_outline(text: str) -> bool:
     lines = _non_empty_lines(text)
-    if len(lines) < 5:
+    if len(lines) < 8:  # Increase minimum lines to avoid false positives for short lists
         return False
 
     short_line_ratio = sum(1 for line in lines if len(line) <= 60) / len(lines)
     no_punctuation_ratio = sum(1 for line in lines if not re.search(r"[.!?]$", line)) / len(lines)
-    title_like_ratio = sum(
-        1
-        for line in lines
-        if line == line.title() or re.fullmatch(r"[A-Za-z0-9 /,&()'-]+", line)
-    ) / len(lines)
-    verb_like_ratio = sum(
-        1
-        for line in lines
-        if re.search(
-            r"\b(is|was|were|are|has|have|had|contains|includes|became|causes|caused|"
-            r"won|lost|ranked|announced|reported|stated|measured|recorded)\b",
-            line.lower(),
-        )
-    ) / len(lines)
-
-    return (
-        short_line_ratio >= 0.75
-        and no_punctuation_ratio >= 0.75
-        and title_like_ratio >= 0.6
-        and verb_like_ratio <= 0.3
-    )
+    
+    # Relaxed thresholds to allow structured scientific/historical lists
+    # Only reject if almost everything is a short fragment without punctuation AND no verbs
+    if short_line_ratio > 0.9 and no_punctuation_ratio > 0.9:
+        return True
+    return False
 
 
 def _parse_json_array(raw_text: str) -> list[dict]:
@@ -200,14 +197,14 @@ def _split_candidate_sentences(text: str) -> list[str]:
 
     parts = [
         sentence.strip(" -•\t")
-        for sentence in re.split(r"(?<=[.!?])\s+|\n+", normalized)
+        for sentence in re.split(r"(?<=[.!?])\s+|(?<=[.!?])(?=\[)|(?<=\])\s+|\n+", normalized)
         if sentence.strip()
     ]
 
     candidates = []
     seen = set()
     for part in parts:
-        if len(part) < 24 or len(part) > 400:
+        if len(part) < 10 or len(part) > 500:
             continue
 
         key = part.lower()

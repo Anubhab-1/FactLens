@@ -114,7 +114,7 @@ function buildResult() {
 }
 
 describe("ClaimCard", () => {
-  it("surfaces manual override provenance in the claim detail view", () => {
+  it("renders the collapsed verification summary", () => {
     render(
       <ClaimCard
         anchorId="claim-1"
@@ -127,11 +127,14 @@ describe("ClaimCard", () => {
       />,
     );
 
-    expect(screen.getByText("Manual source review is active.")).toBeInTheDocument();
-    expect(screen.getByText(/Model verdict: PARTIALLY TRUE at 72% confidence/i)).toBeInTheDocument();
+    expect(screen.getByText("Factually False")).toBeInTheDocument();
+    expect(screen.getByText("87% Consensus")).toBeInTheDocument();
+    expect(screen.getByText("1 evidence nodes")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /expand verification trail/i })).toBeInTheDocument();
+    expect(screen.queryByText("Synthesis")).not.toBeInTheDocument();
   });
 
-  it("shows evidence proof metadata when the detail view is expanded", () => {
+  it("shows the reasoning and evidence suite when expanded", () => {
     render(
       <ClaimCard
         anchorId="claim-1"
@@ -144,21 +147,15 @@ describe("ClaimCard", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /show evidence & reasoning/i }));
+    fireEvent.click(screen.getByRole("button", { name: /expand verification trail/i }));
 
-    expect(screen.getByText("Evidence Proof")).toBeInTheDocument();
-    expect(screen.getByText("snapshot-abc123")).toBeInTheDocument();
-    expect(screen.getByText(/hash deadbeefcafe1234/i)).toBeInTheDocument();
-    expect(screen.getByText(/A grounded quoted passage for the claim./i)).toBeInTheDocument();
-    expect(screen.getByText(/Temporal context/i)).toBeInTheDocument();
-    expect(screen.getByText(/newest dated evidence is from 2026-03-20/i)).toBeInTheDocument();
-    expect(screen.getByText("Direct debunking")).toBeInTheDocument();
-    expect(screen.getByText("Entity mismatch")).toBeInTheDocument();
-    expect(screen.getByText("Subclaim Map")).toBeInTheDocument();
-    expect(screen.getByText(/different parts of this claim resolve differently/i)).toBeInTheDocument();
-    expect(screen.getByText("Example subclaim one")).toBeInTheDocument();
-    expect(screen.getByText("Example subclaim two")).toBeInTheDocument();
-    expect(screen.getByText("First-party")).toBeInTheDocument();
-    expect(screen.getByText("Shared network")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /condense analysis/i })).toBeInTheDocument();
+    expect(screen.getByText("Synthesis")).toBeInTheDocument();
+    expect(screen.getByText("The strongest available evidence contradicts the claim.")).toBeInTheDocument();
+    expect(screen.getByText("Evidence Suite")).toBeInTheDocument();
+    expect(screen.getByText("Primary source")).toBeInTheDocument();
+    expect(screen.getByText("example.com")).toBeInTheDocument();
+    expect(screen.getByText("High authority")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /access/i })).toHaveAttribute("href", "https://example.com/source");
   });
 });

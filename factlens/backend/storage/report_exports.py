@@ -56,6 +56,8 @@ def _build_report_lines(report: dict) -> list[StyledLine]:
     results = report.get("results", [])
     verdict_counts = Counter(result.get("verdict", "UNVERIFIABLE") for result in results)
     average_confidence = sum(_safe_float(r.get("confidence")) for r in results) / len(results) if results else 0
+    extraction = dict(evaluation.get("extraction") or {})
+    verification = dict(evaluation.get("verification") or {})
     
     lines: list[StyledLine] = []
     
@@ -70,6 +72,18 @@ def _build_report_lines(report: dict) -> list[StyledLine]:
     
     mix_text = "Verdict Mix: " + ", ".join(f"{VERDICT_LABELS.get(k, k)}: {verdict_counts.get(k, 0)}" for k in ["TRUE", "FALSE", "PARTIALLY_TRUE", "UNVERIFIABLE"])
     lines.append(StyledLine(mix_text, "DEFAULT"))
+    lines.append(
+        StyledLine(
+            f"Extraction: {_title_case(extraction.get('mode', 'pending'))} | Claims Drafted: {int(extraction.get('claim_count', len(claims)) or len(claims))}",
+            "DEFAULT",
+        )
+    )
+    lines.append(
+        StyledLine(
+            f"Verification: {len(results)} result(s) | High confidence: {int(verification.get('high_confidence_claim_count', 0) or 0)}",
+            "DEFAULT",
+        )
+    )
     
     # Signal Summary
     lines.append(StyledLine("AUTHENTICITY SIGNALS", "SECTION_HEAD"))
@@ -91,6 +105,13 @@ def _build_report_lines(report: dict) -> list[StyledLine]:
         # Reasoning
         if res.get("reasoning"):
             _wrap_and_add(lines, f"Reasoning: {res['reasoning']}", "MONO", indent=2)
+
+        conflict_summary = dict(res.get("conflict_summary") or {})
+        contradiction_types = list(conflict_summary.get("contradiction_types") or [])
+        if contradiction_types:
+            lines.append(StyledLine("Contradiction types:", "METADATA_LABEL", indent=2))
+            for item in contradiction_types:
+                _wrap_and_add(lines, str(item.get("label", "")), "MONO", indent=4)
             
         steps = res.get("reasoning_steps") or []
         if steps:
@@ -107,6 +128,31 @@ def _build_report_lines(report: dict) -> list[StyledLine]:
                 lines.append(StyledLine(f"  [{s_idx}] {label}", "DEFAULT", indent=2))
                 if source.get("url"):
                     lines.append(StyledLine(f"      {source['url']}", "MONO", indent=2))
+
+        temporal_context = dict(res.get("temporal_context") or {})
+        if temporal_context.get("summary"):
+            lines.append(StyledLine("Temporal context:", "METADATA_LABEL", indent=2))
+            _wrap_and_add(lines, str(temporal_context["summary"]), "MONO", indent=4)
+
+        subclaim_summary = dict(res.get("subclaim_summary") or {})
+        subclaim_results = list(res.get("subclaim_results") or [])
+        if subclaim_summary.get("synthesis_note") or subclaim_results:
+            lines.append(StyledLine("Subclaim synthesis:", "METADATA_LABEL", indent=2))
+            if subclaim_summary.get("synthesis_note"):
+                _wrap_and_add(lines, str(subclaim_summary["synthesis_note"]), "MONO", indent=4)
+            for subclaim in subclaim_results[:3]:
+                claim_text = str(subclaim.get("claim", "")).strip()
+                verdict_label = VERDICT_LABELS.get(str(subclaim.get("verdict", "")).strip().upper(), str(subclaim.get("verdict", "")).strip())
+                if claim_text:
+                    _wrap_and_add(lines, f"{claim_text} [{verdict_label}]", "MONO", indent=4)
+
+        provenance = list(res.get("evidence_provenance") or [])
+        for p_idx, item in enumerate(provenance[:2], start=1):
+            lines.append(StyledLine(f"Snapshot proof {p_idx}:", "METADATA_LABEL", indent=2))
+            if item.get("snapshot_id"):
+                _wrap_and_add(lines, str(item["snapshot_id"]), "MONO", indent=4)
+            if item.get("primary_quote"):
+                _wrap_and_add(lines, str(item["primary_quote"]), "MONO", indent=4)
         
         lines.append(StyledLine("-" * 60, "MONO"))
 
@@ -124,6 +170,8 @@ def _add_detection_lines(lines: list[StyledLine], title: str, detection: dict | 
     label = labels.get(detection.get("label"), labels.get("UNKNOWN", "Unknown"))
     prob = round(_safe_float(detection.get("ai_probability")) * 100)
     lines.append(StyledLine(f"{title}: {label} ({prob}% probability)", "DEFAULT"))
+    if title == "Visual Media" and str(detection.get("label", "")).strip().upper() == "NO_STRONG_SIGNAL":
+        _wrap_and_add(lines, "No strong synthetic-media signal detected.", "MONO", indent=2)
     if detection.get("explanation"):
         _wrap_and_add(lines, str(detection["explanation"]), "MONO", indent=2)
 
@@ -248,6 +296,18 @@ def _title_case(v: str) -> str:
     return str(v or "unknown").replace("_", " ").title()
 
 # Add legacy labels back if needed by functions I didn't fully rewrite
-AI_LABELS = { "LIKELY_AI": "Likely AI", "POSSIBLY_AI": "Possibly AI", "LIKELY_HUMAN": "Human", "UNKNOWN": "Unknown" }
-MEDIA_LABELS = { "LIKELY_AI": "Synthetic", "POSSIBLY_AI": "Possibly Synthetic", "LIKELY_HUMAN": "Real", "UNKNOWN": "Unknown" }
+AI_LABELS = {
+    "LIKELY_AI": "Likely AI",
+    "POSSIBLY_AI": "Possibly AI",
+    "LIKELY_HUMAN": "Human",
+    "NO_STRONG_SIGNAL": "No Strong Signal",
+    "UNKNOWN": "Unknown",
+}
+MEDIA_LABELS = {
+    "LIKELY_AI": "Synthetic",
+    "POSSIBLY_AI": "Possibly Synthetic",
+    "LIKELY_HUMAN": "Real",
+    "NO_STRONG_SIGNAL": "No Strong Signal",
+    "UNKNOWN": "Unknown",
+}
 VERDICT_LABELS = { "TRUE": "VERIFIED TRUE", "FALSE": "FACTUALLY FALSE", "PARTIALLY_TRUE": "PARTIALLY TRUE", "UNVERIFIABLE": "UNVERIFIABLE" }

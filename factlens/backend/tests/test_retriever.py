@@ -161,6 +161,32 @@ class RetrieverTests(unittest.TestCase):
         self.assertIn("capital and largest city of France", results[0]["raw_content"])
         self.assertEqual(results[0]["published_date"], "2026-03-20")
 
+    def test_build_search_api_result_passes_published_date_hint_to_fallback_fetch(self) -> None:
+        with patch.object(
+            retriever,
+            "_fetch_fallback_result",
+            return_value={
+                "url": "https://example.org/page",
+                "title": "Example page",
+                "raw_content": "Fetched content",
+                "published_date": "2026-03-20",
+            },
+        ) as fallback_fetch:
+            result = retriever._build_search_api_result(
+                "https://example.org/page",
+                "Example page",
+                "Snippet text",
+                published_date="2026-03-20",
+            )
+
+        fallback_fetch.assert_called_once_with(
+            "https://example.org/page",
+            "Example page",
+            "Snippet text",
+            published_date_hint="2026-03-20",
+        )
+        self.assertEqual(result["published_date"], "2026-03-20")
+
     def test_search_query_provider_attempts_uses_wikipedia_when_other_search_is_unavailable(self) -> None:
         async def run_attempts():
             with patch.object(
@@ -686,11 +712,12 @@ class RetrieverTests(unittest.TestCase):
             ]
 
         with patch.object(retriever, "_search_query_provider_attempts", new=fake_attempts):
-            errors = asyncio.run(
+            query_errors, empty_authoritative_queries = asyncio.run(
                 retriever._execute_query_batch(claim, queries, candidate_sources)
             )
 
-        self.assertFalse(errors)
+        self.assertFalse(query_errors)
+        self.assertFalse(empty_authoritative_queries)
         self.assertEqual(queries[0]["provider"], "google_cse")
         self.assertEqual(queries[0]["added_source_count"], 1)
         self.assertEqual(len(queries[0]["provider_attempts"]), 2)
